@@ -7,10 +7,11 @@ import routes from "./routes/index.js";
 const app = express();
 
 // Middlewares
-app.use(helmet);
-app.use(cors);
+app.use(helmet());
+app.use(cors());
 app.use(express.json());
 app.set("trust proxy", 1);
+
 const limiter = rateLimit({
 	windowMs: 15 * 60 * 1000, // 15 minutes
 	max: 100,

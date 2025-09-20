@@ -2,6 +2,8 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import { StatusCodes } from "http-status-codes";
+import sendResponse from "./utils/sendResponse.js";
 import routes from "./routes/index.js";
 
 const app = express();
@@ -20,13 +22,12 @@ app.use(limiter);
 
 // Health
 app.get("/api/v1/health", (req, res) => {
-	return res.status(200).json({
-		success: true,
-		message: "Server is running",
-		data: {},
-		errors: {},
-		meta: {},
-	});
+	return res.status(StatusCodes.OK).json(
+		sendResponse({
+			success: true,
+			message: "Server is running",
+		})
+	);
 });
 
 // Routes

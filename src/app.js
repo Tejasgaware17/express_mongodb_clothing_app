@@ -4,6 +4,10 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { StatusCodes } from "http-status-codes";
 import sendResponse from "./utils/sendResponse.js";
+import {
+	errorHandlerMiddleware,
+	routeNotFoundMiddleware,
+} from "./middlewares/index.js";
 import routes from "./routes/index.js";
 
 const app = express();
@@ -32,5 +36,9 @@ app.get("/api/v1/health", (req, res) => {
 
 // Routes
 app.use("/api/v1", routes);
+
+// Error handling middlewares
+app.use(errorHandlerMiddleware);
+app.use(routeNotFoundMiddleware);
 
 export default app;

@@ -38,7 +38,7 @@ app.get("/api/v1/health", (req, res) => {
 app.use("/api/v1", routes);
 
 // Error handling middlewares
-app.use(errorHandlerMiddleware);
 app.use(routeNotFoundMiddleware);
+app.use(errorHandlerMiddleware);
 
 export default app;

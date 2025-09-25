@@ -1,12 +1,8 @@
-import dotenv from "dotenv";
 import app from "./app.js";
-import { connectDatabase } from "./config/index.js";
+import { connectDatabase, config } from "./config/index.js";
 
-dotenv.config();
+connectDatabase(config.mongoURI);
 
-connectDatabase(process.env.MONGO_URI);
-
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-	console.log(`Server running on port ${PORT}`);
+app.listen(config.port, () => {
+	console.log(`Server running on port ${config.port}`);
 });

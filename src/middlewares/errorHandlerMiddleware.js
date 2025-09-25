@@ -1,5 +1,5 @@
 import { StatusCodes } from "http-status-codes";
-import sendResponse from "../utils/sendResponse.js";
+import { sendResponse } from "../utils/index.js";
 
 const errorHandlerMiddleware = (err, req, res, next) => {
 	let customError = {

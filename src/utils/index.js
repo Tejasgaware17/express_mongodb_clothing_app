@@ -1,2 +1,4 @@
-export { default as logger } from "./logger.js";
-export { default as sendResponse } from "./sendResponse.js";
+import logger from "./logger.js";
+import sendResponse from "./sendResponse.js";
+
+export { logger, sendResponse };

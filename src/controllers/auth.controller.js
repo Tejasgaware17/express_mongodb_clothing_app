@@ -1,7 +1,12 @@
 import { StatusCodes } from "http-status-codes";
 import User from "../models/user.model.js";
 import { BadRequestError, UnauthorizedError } from "../errors/index.js";
-import { logger, sendResponse, generateTokens } from "../utils/index.js";
+import {
+	logger,
+	sendResponse,
+	generateTokens,
+	verifyToken,
+} from "../utils/index.js";
 import { config } from "../config/index.js";
 
 export const register = async (req, res, next) => {
@@ -67,6 +72,51 @@ export const login = async (req, res, next) => {
 				success: true,
 				message: "User logged in successfully.",
 				data: { user: userResponse, accessToken },
+			})
+		);
+	} catch (error) {
+		next(error);
+	}
+};
+
+export const refreshToken = async (req, res, next) => {
+	try {
+		const { refreshToken } = req.signedCookies;
+		if (!refreshToken) {
+			throw new UnauthorizedError("Authentication invalid.");
+		}
+
+		// Token verification
+		const { payload, expired } = verifyToken(
+			refreshToken,
+			config.jwtRefreshSecret
+		);
+		if (!payload) {
+			throw new UnauthorizedError("Authentication invalid.");
+		}
+
+		const user = await User.findOne({ userId: payload.userId });
+		if (!user) {
+			throw new UnauthorizedError("Authentication invalid.");
+		}
+
+		// New Tokens for the user
+		const tokenPayload = { userId: user.userId, role: user.role };
+		const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
+			generateTokens(tokenPayload);
+
+		res.cookie("refreshToken", newRefreshToken, {
+			httpOnly: true,
+			secure: config.nodeEnv === "production",
+			signed: true,
+			maxAge: 7 * 24 * 60 * 60 * 1000,
+		});
+
+		return res.status(StatusCodes.OK).json(
+			sendResponse({
+				success: true,
+				message: "Access token refreshed successfully.",
+				data: { accessToken: newAccessToken },
 			})
 		);
 	} catch (error) {

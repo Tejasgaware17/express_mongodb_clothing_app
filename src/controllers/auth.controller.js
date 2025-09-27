@@ -4,7 +4,7 @@ import { BadRequestError, UnauthorizedError } from "../errors/index.js";
 import { logger, sendResponse, generateTokens } from "../utils/index.js";
 import { config } from "../config/index.js";
 
-export const registerUser = async (req, res, next) => {
+export const register = async (req, res, next) => {
 	try {
 		const { email, password } = req.body;
 
@@ -32,7 +32,7 @@ export const registerUser = async (req, res, next) => {
 	}
 };
 
-export const loginUser = async (req, res, next) => {
+export const login = async (req, res, next) => {
 	try {
 		const { email, password } = req.body;
 

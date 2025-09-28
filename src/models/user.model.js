@@ -31,6 +31,7 @@ const UserSchema = new Schema(
 			enum: ["customer", "admin"],
 			default: "customer",
 		},
+		refreshTokens: [String],
 	},
 	{ timestamps: true }
 );

@@ -1,4 +1,5 @@
 import { StatusCodes } from "http-status-codes";
+import crypto from "crypto";
 import User from "../models/user.model.js";
 import { BadRequestError, UnauthorizedError } from "../errors/index.js";
 import {
@@ -42,18 +43,22 @@ export const login = async (req, res, next) => {
 		const { email, password } = req.body;
 
 		const user = await User.findOne({ email }).select("+password");
-		if (!user) {
-			throw new UnauthorizedError("Invalid credentials.");
-		}
-
-		const isPasswordCorrect = await user.comparePassword(password);
-		if (!isPasswordCorrect) {
+		if (!user || !(await user.comparePassword(password))) {
 			throw new UnauthorizedError("Invalid credentials.");
 		}
 
 		// Token generation
 		const tokenPayload = { userId: user.userId, role: user.role };
 		const { accessToken, refreshToken } = generateTokens(tokenPayload);
+
+		// Hash the refresh token before saving
+		const hashedRefreshToken = crypto
+			.createHash("sha256")
+			.update(refreshToken)
+			.digest("hex");
+
+		user.refreshTokens.push(hashedRefreshToken);
+		await user.save();
 
 		// Http cookie for refreshToken
 		res.cookie("refreshToken", refreshToken, {
@@ -66,6 +71,7 @@ export const login = async (req, res, next) => {
 		// Response
 		const userResponse = user.toObject();
 		delete userResponse.password;
+		delete userResponse.refreshTokens;
 
 		return res.status(StatusCodes.OK).json(
 			sendResponse({
@@ -81,29 +87,47 @@ export const login = async (req, res, next) => {
 
 export const refreshToken = async (req, res, next) => {
 	try {
-		const { refreshToken } = req.signedCookies;
-		if (!refreshToken) {
+		const { refreshToken: incomingToken } = req.signedCookies;
+		if (!incomingToken) {
 			throw new UnauthorizedError("Authentication invalid.");
 		}
 
-		// Token verification
-		const { payload, expired } = verifyToken(
-			refreshToken,
-			config.jwtRefreshSecret
-		);
+		const { payload } = verifyToken(incomingToken, config.jwtRefreshSecret);
 		if (!payload) {
 			throw new UnauthorizedError("Authentication invalid.");
 		}
 
-		const user = await User.findOne({ userId: payload.userId });
+		const hashedIncomingToken = crypto
+			.createHash("sha256")
+			.update(incomingToken)
+			.digest("hex");
+
+		const user = await User.findOne({
+			userId: payload.userId,
+			refreshTokens: hashedIncomingToken,
+		});
 		if (!user) {
-			throw new UnauthorizedError("Authentication invalid.");
+			throw new UnauthorizedError(
+				"Authentication invalid. Token has been invalidated."
+			);
 		}
 
-		// New Tokens for the user
+		// Generating new tokens
 		const tokenPayload = { userId: user.userId, role: user.role };
 		const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
 			generateTokens(tokenPayload);
+
+		const hashedNewRefreshToken = crypto
+			.createHash("sha256")
+			.update(newRefreshToken)
+			.digest("hex");
+
+		// Rotating tokens in the database
+		user.refreshTokens = user.refreshTokens.filter(
+			(rt) => rt !== hashedIncomingToken
+		);
+		user.refreshTokens.push(hashedNewRefreshToken);
+		await user.save();
 
 		res.cookie("refreshToken", newRefreshToken, {
 			httpOnly: true,
@@ -126,7 +150,20 @@ export const refreshToken = async (req, res, next) => {
 
 export const logout = async (req, res, next) => {
 	try {
-		// Resetting cookie to empty value
+		const { refreshToken } = req.signedCookies;
+		if (refreshToken) {
+			const hashedRefreshToken = crypto
+				.createHash("sha256")
+				.update(refreshToken)
+				.digest("hex");
+
+			// Deleting the token from the user's document
+			await User.findOneAndUpdate(
+				{ refreshTokens: hashedRefreshToken },
+				{ $pull: { refreshTokens: hashedRefreshToken } }
+			);
+		}
+
 		res.cookie("refreshToken", "", {
 			httpOnly: true,
 			expires: new Date(0),

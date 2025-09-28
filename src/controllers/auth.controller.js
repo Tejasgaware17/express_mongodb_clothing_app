@@ -123,3 +123,22 @@ export const refreshToken = async (req, res, next) => {
 		next(error);
 	}
 };
+
+export const logout = async (req, res, next) => {
+	try {
+		// Resetting cookie to empty value
+		res.cookie("refreshToken", "", {
+			httpOnly: true,
+			expires: new Date(0),
+		});
+
+		return res.status(StatusCodes.OK).json(
+			sendResponse({
+				success: true,
+				message: "User logged out successfully.",
+			})
+		);
+	} catch (error) {
+		next(error);
+	}
+};

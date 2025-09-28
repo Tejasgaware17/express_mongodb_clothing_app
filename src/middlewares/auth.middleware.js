@@ -1,8 +1,8 @@
-import { UnauthorizedError } from "../errors/index.js";
+import { UnauthorizedError, ForbiddenError } from "../errors/index.js";
 import { verifyToken } from "../utils/index.js";
 import { config } from "../config/index.js";
 
-const authenticateUser = (req, res, next) => {
+export const authenticateUser = (req, res, next) => {
 	const authHeader = req.headers.authorization;
 	if (!authHeader || !authHeader.startsWith("Bearer ")) {
 		throw new UnauthorizedError("Authentication Invalid: No token provided.");
@@ -23,4 +23,13 @@ const authenticateUser = (req, res, next) => {
 	}
 };
 
-export { authenticateUser };
+export const authorizePermissions = (...roles) => {
+	return (req, res, next) => {
+		if (!roles.includes(req.user.role)) {
+			throw new ForbiddenError(
+				"You do not have permission to access this route."
+			);
+		}
+		next();
+	};
+};

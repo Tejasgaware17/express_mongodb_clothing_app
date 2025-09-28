@@ -21,3 +21,18 @@ export const getMe = async (req, res, next) => {
 		next(error);
 	}
 };
+
+export const getAllUsers = async (req, res, next) => {
+	try {
+		const users = await User.find({});
+		return res.status(StatusCodes.OK).json(
+			sendResponse({
+				success: true,
+				message: "All users fetched successfully.",
+				data: { users, count: users.length },
+			})
+		);
+	} catch (error) {
+		next(error);
+	}
+};

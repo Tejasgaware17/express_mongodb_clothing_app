@@ -2,6 +2,7 @@ import { Schema, model } from "mongoose";
 import bcrypt from "bcryptjs";
 import { v4 as uuidv4 } from "uuid";
 import { config } from "../config/index.js";
+import AddressSchema from "./address.model.js";
 
 const UserSchema = new Schema(
 	{
@@ -10,6 +11,18 @@ const UserSchema = new Schema(
 			default: uuidv4,
 			unique: true,
 			index: true,
+		},
+		name: {
+			first: {
+				type: String,
+				required: [true, "First name is required"],
+				trim: true,
+			},
+			last: {
+				type: String,
+				required: [true, "Last name is required"],
+				trim: true,
+			},
 		},
 		email: {
 			type: String,
@@ -26,11 +39,29 @@ const UserSchema = new Schema(
 			select: false,
 			trim: true,
 		},
+		phone: {
+			type: String,
+			trim: true,
+			unique: true,
+			sparse: true,
+			match: [/^\d{10}$/, "Please provide a valid 10-digit phone number"],
+		},
+		gender: {
+			type: String,
+			enum: ["male", "female"],
+			lowercase: true,
+		},
 		role: {
 			type: String,
 			enum: ["customer", "admin"],
 			default: "customer",
 		},
+		memberStatus: {
+			type: String,
+			enum: ["regular", "premium"],
+			default: "regular",
+		},
+		addresses: [AddressSchema],
 		refreshTokens: [String],
 	},
 	{ timestamps: true }

@@ -12,14 +12,20 @@ import { config } from "../config/index.js";
 
 export const register = async (req, res, next) => {
 	try {
-		const { email, password } = req.body;
+		const { firstName, lastName, email, password, phone, gender } = req.body;
 
 		const existingUser = await User.findOne({ email });
 		if (existingUser) {
 			throw new BadRequestError(`User with email ${email} already exists.`);
 		}
 
-		const user = await User.create({ email, password });
+		const user = await User.create({
+			name: { first: firstName, last: lastName },
+			email,
+			password,
+			phone,
+			gender,
+		});
 
 		// Response
 		const userResponse = user.toObject();

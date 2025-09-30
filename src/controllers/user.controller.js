@@ -1,7 +1,8 @@
 import { StatusCodes } from "http-status-codes";
 import User from "../models/user.model.js";
 import { logger, sendResponse } from "../utils/index.js";
-import { NotFoundError } from "../errors/index.js";
+import { NotFoundError, BadRequestError } from "../errors/index.js";
+import { config } from "../config/index.js";
 
 export const getMe = async (req, res, next) => {
 	try {
@@ -81,6 +82,36 @@ export const updateUser = async (req, res, next) => {
 				success: true,
 				message: "User profile updated successfully.",
 				data: user,
+			})
+		);
+	} catch (error) {
+		next(error);
+	}
+};
+
+export const addAddress = async (req, res, next) => {
+	try {
+		const { userId } = req.user;
+		const user = await User.findOne({ userId });
+
+		if (!user) {
+			throw new NotFoundError(`No user found with id: ${userId}`);
+		}
+
+		if (user.addresses.length >= config.maxAddressesPerUser) {
+			throw new BadRequestError(
+				`You can only store up to ${config.maxAddressesPerUser} addresses.`
+			);
+		}
+
+		user.addresses.push(req.body);
+		const updatedUser = await user.save();
+
+		return res.status(StatusCodes.CREATED).json(
+			sendResponse({
+				success: true,
+				message: "Address added successfully.",
+				data: updatedUser.addresses,
 			})
 		);
 	} catch (error) {

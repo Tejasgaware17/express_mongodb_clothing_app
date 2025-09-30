@@ -6,7 +6,6 @@ const AddressSchema = new Schema(
 		addressId: {
 			type: String,
 			default: uuidv4,
-			unique: true,
 		},
 		label: {
 			type: String,

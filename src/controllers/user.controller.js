@@ -92,15 +92,23 @@ export const updateUser = async (req, res, next) => {
 export const addAddress = async (req, res, next) => {
 	try {
 		const { userId } = req.user;
-		const user = await User.findOne({ userId });
 
+		const user = await User.findOne({ userId });
 		if (!user) {
 			throw new NotFoundError(`No user found with id: ${userId}`);
 		}
-
 		if (user.addresses.length >= config.maxAddressesPerUser) {
 			throw new BadRequestError(
 				`You can only store up to ${config.maxAddressesPerUser} addresses.`
+			);
+		}
+
+		const labelExists = user.addresses.some(
+			(addr) => addr.label.toLowerCase() === req.body.label.toLowerCase()
+		);
+		if (labelExists) {
+			throw new BadRequestError(
+				`An address with the label '${req.body.label}' already exists.`
 			);
 		}
 
@@ -123,40 +131,48 @@ export const updateAddress = async (req, res, next) => {
 	try {
 		const { userId } = req.user;
 		const { addressId } = req.params;
-		const updateData = req.body;
 
-		const user = await User.findOne({ userId });
-		if (!user) {
-			throw new NotFoundError(`No user found with id: ${userId}`);
+		if (req.body.label) {
+			const newLabel = req.body.label.toLowerCase();
+			const user = await User.findOne({
+				userId,
+				"addresses.label": newLabel,
+				"addresses.addressId": { $ne: addressId },
+			});
+
+			if (user) {
+				throw new BadRequestError(
+					`An address with the label '${req.body.label}' already exists.`
+				);
+			}
 		}
 
-		const addressToUpdate = user.addresses.find(
-			(addr) => addr.addressId === addressId
-		);
-		if (!addressToUpdate) {
-			throw new NotFoundError(`No address found with id: ${addressId}`);
-		}
-
-		const allowedFields = [
-			"label",
-			"area",
-			"city",
-			"state",
-			"postalCode",
-		];
+		const allowedFields = ["label", "area", "city", "state", "postalCode"];
+		const updateFields = {};
 		allowedFields.forEach((field) => {
-			if (updateData[field] !== undefined) {
-				addressToUpdate[field] = updateData[field];
+			if (req.body[field] !== undefined) {
+				updateFields[`addresses.$.${field}`] = req.body[field];
 			}
 		});
 
-		await user.save();
+		if (Object.keys(updateFields).length === 0) {
+			throw new BadRequestError("No valid fields provided for update.");
+		}
+
+		const updatedUser = await User.findOneAndUpdate(
+			{ userId, "addresses.addressId": addressId },
+			{ $set: updateFields },
+			{ new: true }
+		);
+		if (!updatedUser) {
+			throw new NotFoundError(`No address found with id: ${addressId}`);
+		}
 
 		return res.status(StatusCodes.OK).json(
 			sendResponse({
 				success: true,
 				message: "Address updated successfully.",
-				data: user.addresses,
+				data: updatedUser.addresses,
 			})
 		);
 	} catch (error) {

@@ -17,11 +17,12 @@ const errorHandlerMiddleware = (err, req, res, next) => {
 
 	// Mongoose Duplicate Key Error
 	if (err.code && err.code === 11000) {
-		customError.message = `Duplicate value entered for ${Object.keys(
-			err.keyValue
-		)} field, please choose another value.`;
-		customError.statusCode = StatusCodes.BAD_REQUEST;
-	}
+        const field = Object.keys(err.keyValue)[0];
+        const value = Object.values(err.keyValue)[0];
+        
+        customError.message = `An account with this ${field} (${value}) already exists. Please use a different ${field}.`;
+        customError.statusCode = StatusCodes.BAD_REQUEST;
+    }
 
 	// Mongoose Cast Error
 	if (err.name === "CastError") {

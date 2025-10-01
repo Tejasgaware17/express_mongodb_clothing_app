@@ -12,4 +12,5 @@ export const config = {
 	jwtRefreshSecret: process.env.JWT_REFRESH_SECRET,
 	jwtRefreshExp: process.env.JWT_REFRESH_EXP || "7d",
 	bcryptSaltRounds: parseInt(process.env.BCRYPT_SALT_ROUNDS) || 12,
+	maxAddressesPerUser: parseInt(process.env.MAX_ADDRESSES_PER_USER) || 3,
 };

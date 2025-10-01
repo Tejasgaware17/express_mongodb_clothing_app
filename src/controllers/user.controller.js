@@ -163,3 +163,30 @@ export const updateAddress = async (req, res, next) => {
 		next(error);
 	}
 };
+
+export const deleteAddress = async (req, res, next) => {
+	try {
+		const { userId } = req.user;
+		const { addressId } = req.params;
+
+		const updatedUser = await User.findOneAndUpdate(
+			{ userId, "addresses.addressId": addressId },
+			{ $pull: { addresses: { addressId } } },
+			{ new: true }
+		);
+
+		if (!updatedUser) {
+			throw new NotFoundError(`No address found with id: ${addressId}`);
+		}
+
+		return res.status(StatusCodes.OK).json(
+			sendResponse({
+				success: true,
+				message: "Address deleted successfully.",
+				data: updatedUser.addresses,
+			})
+		);
+	} catch (error) {
+		next(error);
+	}
+};

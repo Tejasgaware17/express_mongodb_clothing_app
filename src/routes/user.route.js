@@ -5,6 +5,7 @@ import {
 	updateUser,
 	addAddress,
 	updateAddress,
+	deleteAddress,
 } from "../controllers/index.js";
 import {
 	authenticateUser,
@@ -40,6 +41,8 @@ router.patch(
 	handleValidationErrors,
 	updateAddress
 );
+
+router.delete("/me/addresses/:addressId", authenticateUser, deleteAddress);
 
 router.get("/", authenticateUser, authorizePermissions("admin"), getAllUsers);
 

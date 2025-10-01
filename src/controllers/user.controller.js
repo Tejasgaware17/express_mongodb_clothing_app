@@ -185,21 +185,31 @@ export const deleteAddress = async (req, res, next) => {
 		const { userId } = req.user;
 		const { addressId } = req.params;
 
-		const updatedUser = await User.findOneAndUpdate(
-			{ userId, "addresses.addressId": addressId },
-			{ $pull: { addresses: { addressId } } },
-			{ new: true }
-		);
+		const user = await User.findOne({ userId });
+		if (!user) {
+			throw new NotFoundError(`No user found with id: ${userId}`);
+		}
+		if (user.addresses.length === 1) {
+			throw new BadRequestError(
+				"You cannot delete your last remaining address."
+			);
+		}
 
-		if (!updatedUser) {
+		const addressIndex = user.addresses.findIndex(
+			(addr) => addr.addressId === addressId
+		);
+		if (addressIndex === -1) {
 			throw new NotFoundError(`No address found with id: ${addressId}`);
 		}
+
+		user.addresses.splice(addressIndex, 1);
+		await user.save();
 
 		return res.status(StatusCodes.OK).json(
 			sendResponse({
 				success: true,
 				message: "Address deleted successfully.",
-				data: updatedUser.addresses,
+				data: user.addresses,
 			})
 		);
 	} catch (error) {

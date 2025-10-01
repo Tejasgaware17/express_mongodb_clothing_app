@@ -118,3 +118,48 @@ export const addAddress = async (req, res, next) => {
 		next(error);
 	}
 };
+
+export const updateAddress = async (req, res, next) => {
+	try {
+		const { userId } = req.user;
+		const { addressId } = req.params;
+		const updateData = req.body;
+
+		const user = await User.findOne({ userId });
+		if (!user) {
+			throw new NotFoundError(`No user found with id: ${userId}`);
+		}
+
+		const addressToUpdate = user.addresses.find(
+			(addr) => addr.addressId === addressId
+		);
+		if (!addressToUpdate) {
+			throw new NotFoundError(`No address found with id: ${addressId}`);
+		}
+
+		const allowedFields = [
+			"label",
+			"area",
+			"city",
+			"state",
+			"postalCode",
+		];
+		allowedFields.forEach((field) => {
+			if (updateData[field] !== undefined) {
+				addressToUpdate[field] = updateData[field];
+			}
+		});
+
+		await user.save();
+
+		return res.status(StatusCodes.OK).json(
+			sendResponse({
+				success: true,
+				message: "Address updated successfully.",
+				data: user.addresses,
+			})
+		);
+	} catch (error) {
+		next(error);
+	}
+};

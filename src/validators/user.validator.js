@@ -26,7 +26,7 @@ export const updateUserValidator = [
 		.withMessage("Invalid gender specified."),
 ];
 
-export const addressValidator = [
+export const addAddressValidator = [
 	body("label")
 		.notEmpty()
 		.withMessage("An address label is required.")
@@ -45,4 +45,34 @@ export const addressValidator = [
 		.trim()
 		.isPostalCode("IN")
 		.withMessage("Please provide a valid Indian postal code."),
+];
+
+
+export const updateAddressValidator = [
+    body("label")
+        .optional()
+        .notEmpty().withMessage("Label cannot be empty.")
+        .trim()
+        .toLowerCase(),
+
+    body("area")
+        .optional()
+        .notEmpty().withMessage("Area cannot be empty.")
+        .trim(),
+
+    body("city")
+        .optional()
+        .notEmpty().withMessage("City cannot be empty.")
+        .trim(),
+
+    body("state")
+        .optional()
+        .notEmpty().withMessage("State cannot be empty.")
+        .trim(),
+        
+    body("postalCode")
+        .optional()
+        .notEmpty().withMessage("Postal code cannot be empty.")
+        .trim()
+        .isPostalCode("IN").withMessage("Please provide a valid Indian postal code."),
 ];

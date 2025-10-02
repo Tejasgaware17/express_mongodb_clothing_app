@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { registerValidator, loginValidator } from "../validators/index.js";
-import handleValidationErrors from "../middlewares/handleValidationErrors.middleware.js";
+import { handleValidationErrors } from "../middlewares/index.js";
 import {
 	register,
 	login,

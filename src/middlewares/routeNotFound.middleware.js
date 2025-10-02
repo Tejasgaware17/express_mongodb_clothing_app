@@ -1,4 +1,4 @@
-import sendResponse from "../utils/sendResponse.js";
+import { sendResponse } from "../utils/index.js";
 import { StatusCodes } from "http-status-codes";
 
 const routeNotFoundMiddleware = (req, res) => {

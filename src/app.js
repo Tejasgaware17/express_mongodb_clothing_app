@@ -19,12 +19,13 @@ const app = express();
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
-app.use(cookieParser(config.cookieSecret))
+app.use(cookieParser(config.cookieSecret));
 app.set("trust proxy", 1);
 
 const limiter = rateLimit({
-	windowMs: 15 * 60 * 1000, // 15 minutes
-	max: 100,
+	windowMs: config.rateLimiterWindowMs,
+	max: config.rateLimiterMax,
+	message: "Too many requests from this IP, please try again after 15 minutes",
 });
 app.use(limiter);
 

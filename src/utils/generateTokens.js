@@ -2,8 +2,7 @@ import jwt from "jsonwebtoken";
 import { config } from "../config/index.js";
 
 /**
- * Generates Access and Refresh tokens for a given user payload.
- * @param {Object} payload - The user data to include in the token (e.g., userId, role).
+ * @param {Object} payload
  * @returns { {accessToken: string, refreshToken: string} }
  */
 export const generateTokens = (payload) => {

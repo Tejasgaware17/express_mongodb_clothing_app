@@ -6,7 +6,7 @@ import cookieParser from "cookie-parser";
 
 import { config } from "./config/index.js";
 import { StatusCodes } from "http-status-codes";
-import sendResponse from "./utils/sendResponse.js";
+import { sendResponse } from "./utils/index.js";
 import {
 	errorHandlerMiddleware,
 	routeNotFoundMiddleware,

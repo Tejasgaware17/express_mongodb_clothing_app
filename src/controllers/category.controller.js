@@ -57,3 +57,29 @@ export const getCategory = async (req, res, next) => {
 		next(error);
 	}
 };
+
+export const updateCategory = async (req, res, next) => {
+    try {
+        const { slug } = req.params;
+        const updateData = req.body;
+
+        const category = await Category.findOneAndUpdate({ slug }, updateData, {
+            new: true,
+            runValidators: true,
+        });
+
+        if (!category) {
+            throw new NotFoundError(`No category found with slug: ${slug}`);
+        }
+
+        return res.status(StatusCodes.OK).json(
+            sendResponse({
+                success: true,
+                message: "Category updated successfully.",
+                data: category,
+            })
+        );
+    } catch (error) {
+        next(error);
+    }
+};

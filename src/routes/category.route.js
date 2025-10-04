@@ -3,13 +3,14 @@ import {
 	createCategory,
 	getAllCategories,
 	getCategory,
+	updateCategory,
 } from "../controllers/index.js";
 import {
 	authenticateUser,
 	authorizePermissions,
 	handleValidationErrors,
 } from "../middlewares/index.js";
-import { createCategoryValidator } from "../validators/index.js";
+import { createCategoryValidator, updateCategoryValidator } from "../validators/index.js";
 
 const router = Router();
 
@@ -26,5 +27,7 @@ router.post(
 	handleValidationErrors,
 	createCategory
 );
+
+router.patch('/:slug', authenticateUser, authorizePermissions('admin'), updateCategoryValidator, handleValidationErrors, updateCategory)
 
 export default router;

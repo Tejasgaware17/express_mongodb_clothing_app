@@ -83,3 +83,33 @@ export const updateCategory = async (req, res, next) => {
         next(error);
     }
 };
+
+export const deleteCategory = async (req, res, next) => {
+	try {
+		const { slug } = req.params;
+		const category = await Category.findOne({ slug });
+		if (!category) {
+			throw new NotFoundError(`No category found with slug: ${slug}`);
+		}
+
+		// Check for products in the associated category
+		// const productsInCategory = await Product.countDocuments({
+		// 	category: category._id,
+		// });
+		// if (productsInCategory > 0) {
+		// 	throw new BadRequestError(
+		// 		"Cannot delete category because it has associated products. Please re-assign or delete those products first."
+		// 	);
+		// }
+		await Category.findByIdAndDelete(category._id);
+
+		return res.status(StatusCodes.OK).json(
+			sendResponse({
+				success: true,
+				message: "Category deleted successfully.",
+			})
+		);
+	} catch (error) {
+		next(error);
+	}
+};

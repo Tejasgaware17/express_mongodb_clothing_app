@@ -1,5 +1,9 @@
 import { Router } from "express";
-import { createCategory } from "../controllers/index.js";
+import {
+	createCategory,
+	getAllCategories,
+	getCategory,
+} from "../controllers/index.js";
 import {
 	authenticateUser,
 	authorizePermissions,
@@ -9,6 +13,11 @@ import { createCategoryValidator } from "../validators/index.js";
 
 const router = Router();
 
+// PUBLIC ROUTES
+router.get("/", getAllCategories);
+router.get("/:slug", getCategory);
+
+// ADMIN-ONLY ROUTES
 router.post(
 	"/",
 	authenticateUser,

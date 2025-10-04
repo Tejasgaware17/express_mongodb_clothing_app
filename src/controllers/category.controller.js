@@ -1,7 +1,7 @@
 import { StatusCodes } from "http-status-codes";
 import { Category } from "../models/index.js";
 import { sendResponse } from "../utils/index.js";
-import { BadRequestError } from "../errors/index.js";
+import { BadRequestError, NotFoundError } from "../errors/index.js";
 
 export const createCategory = async (req, res, next) => {
 	try {
@@ -13,6 +13,43 @@ export const createCategory = async (req, res, next) => {
 			sendResponse({
 				success: true,
 				message: "Category created successfully.",
+				data: category,
+			})
+		);
+	} catch (error) {
+		next(error);
+	}
+};
+
+export const getAllCategories = async (req, res, next) => {
+	try {
+		const categories = await Category.find({});
+
+		return res.status(StatusCodes.OK).json(
+			sendResponse({
+				success: true,
+				message: "All categories fetched successfully.",
+				data: { count: categories.length, categories },
+			})
+		);
+	} catch (error) {
+		next(error);
+	}
+};
+
+export const getCategory = async (req, res, next) => {
+	try {
+		const { slug } = req.params;
+		const category = await Category.findOne({ slug });
+
+		if (!category) {
+			throw new NotFoundError(`No category found with slug: ${slug}`);
+		}
+
+		return res.status(StatusCodes.OK).json(
+			sendResponse({
+				success: true,
+				message: "Category fetched successfully.",
 				data: category,
 			})
 		);

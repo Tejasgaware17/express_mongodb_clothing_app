@@ -6,7 +6,6 @@ import { BadRequestError, NotFoundError } from "../errors/index.js";
 export const createCategory = async (req, res, next) => {
 	try {
 		const { name, description } = req.body;
-
 		const category = await Category.create({ name, description });
 
 		return res.status(StatusCodes.CREATED).json(
@@ -41,7 +40,6 @@ export const getCategory = async (req, res, next) => {
 	try {
 		const { slug } = req.params;
 		const category = await Category.findOne({ slug });
-
 		if (!category) {
 			throw new NotFoundError(`No category found with slug: ${slug}`);
 		}
@@ -59,29 +57,28 @@ export const getCategory = async (req, res, next) => {
 };
 
 export const updateCategory = async (req, res, next) => {
-    try {
-        const { slug } = req.params;
-        const updateData = req.body;
+	try {
+		const { slug } = req.params;
+		const updateData = req.body;
 
-        const category = await Category.findOneAndUpdate({ slug }, updateData, {
-            new: true,
-            runValidators: true,
-        });
+		const category = await Category.findOneAndUpdate({ slug }, updateData, {
+			new: true,
+			runValidators: true,
+		});
+		if (!category) {
+			throw new NotFoundError(`No category found with slug: ${slug}`);
+		}
 
-        if (!category) {
-            throw new NotFoundError(`No category found with slug: ${slug}`);
-        }
-
-        return res.status(StatusCodes.OK).json(
-            sendResponse({
-                success: true,
-                message: "Category updated successfully.",
-                data: category,
-            })
-        );
-    } catch (error) {
-        next(error);
-    }
+		return res.status(StatusCodes.OK).json(
+			sendResponse({
+				success: true,
+				message: "Category updated successfully.",
+				data: category,
+			})
+		);
+	} catch (error) {
+		next(error);
+	}
 };
 
 export const deleteCategory = async (req, res, next) => {

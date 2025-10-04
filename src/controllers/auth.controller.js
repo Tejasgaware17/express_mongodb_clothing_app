@@ -111,7 +111,7 @@ export const refreshToken = async (req, res, next) => {
 		const user = await User.findOne({
 			userId: payload.userId,
 			refreshTokens: hashedIncomingToken,
-		});
+		}).select("+role");
 		if (!user) {
 			throw new UnauthorizedError(
 				"Authentication invalid. Token has been invalidated."

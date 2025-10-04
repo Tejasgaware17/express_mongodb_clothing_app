@@ -48,7 +48,7 @@ export const login = async (req, res, next) => {
 	try {
 		const { email, password } = req.body;
 
-		const user = await User.findOne({ email }).select("+password");
+		const user = await User.findOne({ email }).select("+password +role");
 		if (!user || !(await user.comparePassword(password))) {
 			throw new UnauthorizedError("Invalid credentials.");
 		}

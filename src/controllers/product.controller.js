@@ -36,18 +36,58 @@ export const createProduct = async (req, res, next) => {
 
 export const getAllProducts = async (req, res, next) => {
 	try {
-		// filltering, sorting, paganation logic to be added here
+		const { sort, category, gender, search } = req.query;
 
-		const products = await Product.find({ isActive: true }).populate(
-			"category",
-			"name slug"
-		);
+		// Filtering
+		const queryObject = { isActive: true };
+		if (gender) {
+			queryObject.gender = gender;
+		}
+		if (category) {
+			const categoryDoc = await Category.findOne({
+				slug: category.toLowerCase(),
+			});
+			if (categoryDoc) {
+				queryObject.category = categoryDoc._id;
+			}
+		}
+		if (search) {
+			queryObject.title = { $regex: search, $options: "i" }; // Title search
+		}
+
+		let result = Product.find(queryObject).populate("category", "name slug");
+
+		// Sorting
+		if (sort) {
+			const sortList = sort.split(",").join(" ");
+			result = result.sort(sortList);
+		} else {
+			result = result.sort("-createdAt"); // Default sort
+		}
+
+		// Pagination
+		const page = Number(req.query.page) || 1;
+		const limit = Number(req.query.limit) || 10;
+		const skip = (page - 1) * limit;
+		result = result.skip(skip).limit(limit);
+
+		const products = await result;
+		const totalProducts = await Product.countDocuments(queryObject);
+		const totalPages = Math.ceil(totalProducts / limit);
+
+		const pagination = {
+			totalProducts,
+			totalPages,
+			currentPage: page,
+			limit,
+		};
 
 		return res.status(StatusCodes.OK).json(
 			sendResponse({
 				success: true,
 				message: "Products fetched successfully.",
 				data: { products, count: products.length },
+				meta: pagination,
 			})
 		);
 	} catch (errors) {

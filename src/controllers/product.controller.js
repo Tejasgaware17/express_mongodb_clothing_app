@@ -79,29 +79,52 @@ export const getProduct = async (req, res, next) => {
 };
 
 export const updateProduct = async (req, res, next) => {
-    try {
-        const { productId } = req.params;
-        const updateData = req.body;
-        if (updateData.productType) {
-            delete updateData.productType;
-        }
+	try {
+		const { productId } = req.params;
+		const updateData = req.body;
+		if (updateData.productType) {
+			delete updateData.productType;
+		}
 
-        const product = await Product.findOneAndUpdate({ productId }, updateData, {
-            new: true,
-            runValidators: true,
-        });
-        if (!product) {
-            throw new NotFoundError(`No product found with id: ${productId}`);
-        }
+		const product = await Product.findOneAndUpdate({ productId }, updateData, {
+			new: true,
+			runValidators: true,
+		});
+		if (!product) {
+			throw new NotFoundError(`No product found with id: ${productId}`);
+		}
 
-        return res.status(StatusCodes.OK).json(
-            sendResponse({
-                success: true,
-                message: "Product updated successfully.",
-                data: product,
-            })
-        );
-    } catch (error) {
-        next(error);
-    }
+		return res.status(StatusCodes.OK).json(
+			sendResponse({
+				success: true,
+				message: "Product updated successfully.",
+				data: product,
+			})
+		);
+	} catch (error) {
+		next(error);
+	}
+};
+
+export const deleteProduct = async (req, res, next) => {
+	try {
+		const { productId } = req.params;
+		const product = await Product.findOne({ productId });
+		if (!product) {
+			throw new NotFoundError(`No product found with id: ${productId}`);
+		}
+
+		// Delete reviews associated to the product
+
+		await Product.findByIdAndDelete(product._id);
+
+		return res.status(StatusCodes.OK).json(
+			sendResponse({
+				success: true,
+				message: "Product and associated reviews deleted successfully.",
+			})
+		);
+	} catch (error) {
+		next(error);
+	}
 };

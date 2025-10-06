@@ -4,6 +4,7 @@ import {
 	getAllProducts,
 	getProduct,
 	updateProduct,
+	deleteProduct,
 } from "../controllers/index.js";
 import {
 	authenticateUser,
@@ -31,14 +32,11 @@ router.post(
 	createProduct
 );
 
-// ADMIN_ONLY UPDATE ROUTE
-router.patch(
-	"/:productId",
-	authenticateUser,
-	authorizePermissions("admin"),
-	updateProductValidator,
-	handleValidationErrors,
-	updateProduct
-);
+// ADMIN_ONLY UPDATE AND DELETE ROUTE
+router
+	.route("/:productId")
+	.all(authenticateUser, authorizePermissions("admin"))
+	.patch(updateProductValidator, handleValidationErrors, updateProduct)
+	.delete(deleteProduct);
 
 export default router;

@@ -1,5 +1,5 @@
 import { StatusCodes } from "http-status-codes";
-import { TopWear, BottomWear, Category } from "../models/index.js";
+import { TopWear, BottomWear, Category, Product } from "../models/index.js";
 import { sendResponse } from "../utils/index.js";
 import { NotFoundError } from "../errors/index.js";
 
@@ -31,5 +31,49 @@ export const createProduct = async (req, res, next) => {
 		);
 	} catch (errors) {
 		next(errors);
+	}
+};
+
+export const getAllProducts = async (req, res, next) => {
+	try {
+		// filltering, sorting, paganation logic to be added here
+
+		const products = await Product.find({ isActive: true }).populate(
+			"category",
+			"name slug"
+		);
+
+		return res.status(StatusCodes.OK).json(
+			sendResponse({
+				success: true,
+				message: "Products fetched successfully.",
+				data: { products, count: products.length },
+			})
+		);
+	} catch (errors) {
+		next(errors);
+	}
+};
+
+export const getProduct = async (req, res, next) => {
+	try {
+		const { productId } = req.params;
+		const product = await Product.findOne({
+			productId,
+			isActive: true,
+		}).populate("category", "name slug");
+		if (!product) {
+			throw new NotFoundError(`No product found with id: ${productId}`);
+		}
+
+		return res.status(StatusCodes.OK).json(
+			sendResponse({
+				success: true,
+				message: "Product fetched successfully.",
+				data: product,
+			})
+		);
+	} catch (error) {
+		next(error);
 	}
 };

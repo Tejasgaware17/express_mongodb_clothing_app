@@ -1,5 +1,9 @@
 import { Router } from "express";
-import { createProduct } from "../controllers/index.js";
+import {
+	createProduct,
+	getAllProducts,
+	getProduct,
+} from "../controllers/index.js";
 import {
 	authenticateUser,
 	authorizePermissions,
@@ -9,6 +13,11 @@ import { createProductValidator } from "../validators/index.js";
 
 const router = Router();
 
+// PUBLIC ROUTES
+router.get("/", getAllProducts);
+router.get("/:productId", getProduct);
+
+// ADMIN-ONLY CREATE ROUTE
 router.post(
 	"/",
 	authenticateUser,

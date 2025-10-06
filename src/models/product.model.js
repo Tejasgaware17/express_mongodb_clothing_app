@@ -80,10 +80,6 @@ ProductSchema.pre("validate", async function (next) {
 		const titleParts = [
 			style.fit,
 			style.pattern,
-			style.material,
-			style.neckline,
-			style.length,
-			style.rise,
 		];
 
         // Category

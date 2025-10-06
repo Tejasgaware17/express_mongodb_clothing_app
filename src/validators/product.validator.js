@@ -56,3 +56,27 @@ export const createProductValidator = [
 		.isNumeric()
 		.withMessage("Stock must be a number."),
 ];
+
+export const updateProductValidator = [
+	body("price").optional().isNumeric().withMessage("Price must be a number."),
+
+	body("description")
+		.optional()
+		.notEmpty()
+		.withMessage("Description cannot be empty.")
+		.trim(),
+
+	body("gender")
+		.optional()
+		.isIn(["men", "women", "unisex"])
+		.withMessage("Invalid gender."),
+
+	body("category")
+		.optional()
+		.custom((value) => {
+			if (!isValidObjectId(value)) {
+				throw new Error("Invalid category ID.");
+			}
+			return true;
+		}),
+];

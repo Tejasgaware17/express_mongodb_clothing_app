@@ -77,3 +77,31 @@ export const getProduct = async (req, res, next) => {
 		next(error);
 	}
 };
+
+export const updateProduct = async (req, res, next) => {
+    try {
+        const { productId } = req.params;
+        const updateData = req.body;
+        if (updateData.productType) {
+            delete updateData.productType;
+        }
+
+        const product = await Product.findOneAndUpdate({ productId }, updateData, {
+            new: true,
+            runValidators: true,
+        });
+        if (!product) {
+            throw new NotFoundError(`No product found with id: ${productId}`);
+        }
+
+        return res.status(StatusCodes.OK).json(
+            sendResponse({
+                success: true,
+                message: "Product updated successfully.",
+                data: product,
+            })
+        );
+    } catch (error) {
+        next(error);
+    }
+};

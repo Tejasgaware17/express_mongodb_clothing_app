@@ -1,6 +1,6 @@
 import { StatusCodes } from "http-status-codes";
 import crypto from "crypto";
-import User from "../models/user.model.js";
+import { User } from "../models/index.js";
 import { BadRequestError, UnauthorizedError } from "../errors/index.js";
 import {
 	logger,

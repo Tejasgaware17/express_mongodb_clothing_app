@@ -102,4 +102,48 @@ describe("Authentication Endpoints", () => {
 			);
 		});
 	});
+
+	// TESTS FOR LOGIN
+	describe("POST /api/v1/auth/login", () => {
+		const testUserData = {
+			firstName: "Login",
+			lastName: "Test",
+			email: "login@example.com",
+			password: "Password123@",
+		};
+
+		beforeEach(async () => {
+			await request.post("/api/v1/auth/register").send(testUserData);
+		});
+
+		// Test for login
+		it("should log in a registered user and return tokens", async () => {
+			const response = await request.post("/api/v1/auth/login").send({
+				email: testUserData.email,
+				password: testUserData.password,
+			});
+
+			expect(response.status).toBe(200);
+			expect(response.body.success).toBe(true);
+			expect(response.body.data).toHaveProperty("accessToken");
+			expect(response.body.data.user.email).toBe(testUserData.email);
+
+			// Check for the secure cookie
+			const cookies = response.headers["set-cookie"];
+			expect(cookies.some((cookie) => cookie.startsWith("refreshToken="))).toBe(
+				true
+			);
+		});
+
+		// Test for incorrect password
+		it("should fail to log in with an incorrect password", async () => {
+			const response = await request.post("/api/v1/auth/login").send({
+				email: testUserData.email,
+				password: "Wrong@123",
+			});
+
+			expect(response.status).toBe(401);
+			expect(response.body.message).toBe("Invalid credentials.");
+		});
+	});
 });

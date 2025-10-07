@@ -146,4 +146,65 @@ describe("Authentication Endpoints", () => {
 			expect(response.body.message).toBe("Invalid credentials.");
 		});
 	});
+
+	// TESTS FOR REFRESH TOKEN
+	describe("POST /api/v1/auth/refresh-token", () => {
+		const testUserData = {
+			firstName: "Refresh",
+			lastName: "Test",
+			email: "refresh@example.com",
+			password: "Password123!",
+		};
+
+		it("should issue a new access token if a valid refresh token is provided", async () => {
+			const agent = supertest.agent(app);
+			await agent.post("/api/v1/auth/register").send(testUserData);
+			const loginRes = await agent.post("/api/v1/auth/login").send({
+				email: testUserData.email,
+				password: testUserData.password,
+			});
+
+			const refreshRes = await agent.post("/api/v1/auth/refresh-token").send();
+
+			expect(refreshRes.status).toBe(200);
+			const { accessToken } = refreshRes.body.data;
+			expect(accessToken).toBeDefined();
+
+			// Using the new token to access a protected route
+			const profileRes = await agent
+				.get("/api/v1/users/me")
+				.set("Authorization", `Bearer ${accessToken}`);
+
+			expect(profileRes.status).toBe(200);
+			expect(profileRes.body.data.email).toBe(testUserData.email);
+		});
+	});
+
+	// TESTS FOR LOGOUT
+	describe("POST /api/v1/auth/logout", () => {
+		it("should clear the refresh token cookie on logout", async () => {
+			const agent = supertest.agent(app);
+			const testUserData = {
+				firstName: "Logout",
+				lastName: "Test",
+				email: "logout@example.com",
+				password: "Password123@",
+			};
+
+			await agent.post("/api/v1/auth/register").send(testUserData);
+			await agent.post("/api/v1/auth/login").send({
+				email: testUserData.email,
+				password: testUserData.password,
+			});
+
+			const logoutRes = await agent.post("/api/v1/auth/logout").send();
+
+			expect(logoutRes.status).toBe(200);
+			const cookies = logoutRes.headers["set-cookie"];
+			const refreshTokenCookie = cookies.find((cookie) =>
+				cookie.startsWith("refreshToken=")
+			);
+			expect(refreshTokenCookie).toContain("Expires=Thu, 01 Jan 1970");
+		});
+	});
 });

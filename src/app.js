@@ -3,7 +3,6 @@ import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import cookieParser from "cookie-parser";
-import expressMongoSanitize from "express-mongo-sanitize";
 
 import { config } from "./config/index.js";
 import { StatusCodes } from "http-status-codes";
@@ -20,7 +19,6 @@ const app = express();
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
-app.use(expressMongoSanitize());
 app.use(cookieParser(config.cookieSecret));
 app.set("trust proxy", 1);
 

@@ -1,0 +1,105 @@
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
+import supertest from "supertest";
+import { MongoMemoryServer } from "mongodb-memory-server";
+import mongoose from "mongoose";
+import app from "../src/app.js";
+import { User } from "../src/models/index.js";
+
+const request = supertest(app);
+
+describe("Authentication Endpoints", () => {
+	let mongoServer;
+
+	beforeAll(async () => {
+		mongoServer = await MongoMemoryServer.create();
+		const mongoUri = mongoServer.getUri();
+		await mongoose.connect(mongoUri);
+	});
+	afterAll(async () => {
+		await mongoose.disconnect();
+		await mongoServer.stop();
+	});
+
+	beforeEach(async () => {
+		await User.deleteMany({});
+	});
+
+	// TESTS FOR REGISTRATION
+	describe("POST /api/v1/auth/register", () => {
+		const registrationUserData = {
+			firstName: "Testregister",
+			lastName: "User",
+			email: "registeremail@example.com",
+			password: "Password123!",
+		};
+
+		// Test for registration
+		it("should register a new user successfully with valid data", async () => {
+			const response = await request
+				.post("/api/v1/auth/register")
+				.send(registrationUserData);
+
+			expect(response.status).toBe(201);
+			expect(response.body.success).toBe(true);
+			expect(response.body.data.email).toBe(registrationUserData.email);
+			expect(response.body.data.name.first).toBe(
+				registrationUserData.firstName
+			);
+
+			const dbUser = await User.findOne({ email: registrationUserData.email });
+			expect(dbUser).not.toBeNull();
+			expect(dbUser.password).not.toBe(registrationUserData.password); // Password to be hashed
+		});
+
+		// Test for duplicate user
+		it("should fail to register a user with an existing email", async () => {
+			await request.post("/api/v1/auth/register").send(registrationUserData);
+
+			// Trying to create new user again with a different name but same details
+			const duplicateUser = { ...registrationUserData, firstName: "Jane" };
+			const response = await request
+				.post("/api/v1/auth/register")
+				.send(duplicateUser);
+
+			expect(response.status).toBe(400);
+			expect(response.body.success).toBe(false);
+			expect(response.body.message).toContain("already exists");
+		});
+
+		// Test for invalid email
+		it("should fail to register a user with an invalid email", async () => {
+			const invalidEmailUserData = {
+				...registrationUserData,
+				email: "invalidemail@_com",
+				password: "Password123!",
+			};
+			const response = await request
+				.post("/api/v1/auth/register")
+				.send(invalidEmailUserData);
+
+			expect(response.status).toBe(400);
+			expect(response.body.success).toBe(false);
+			expect(response.body.errors[0].msg).toContain(
+				"provide a valid email address"
+			);
+		});
+
+		// Test for weak password
+		it("should fail to register a user with an invalid password", async () => {
+			const weakPasswordUserData = {
+				...registrationUserData,
+				email: "weak@pass.com",
+				password: "123",
+			};
+			const response = await request
+				.post("/api/v1/auth/register")
+				.send(weakPasswordUserData);
+
+			expect(response.status).toBe(400);
+			expect(response.body.success).toBe(false);
+			expect(response.body.errors[0].msg).toContain(
+				"at least 8 characters long"
+			);
+		});
+	});
+});

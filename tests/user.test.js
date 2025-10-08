@@ -70,4 +70,31 @@ describe("User Endpoints", () => {
 			expect(response.status).toBe(401);
 		});
 	});
+
+	describe("PATCH /api/v1/users/me", () => {
+		it("should allow a user to update their own profile", async () => {
+			const updatePayload = { firstName: "Updated" };
+			const response = await request
+				.patch("/api/v1/users/me")
+				.set("Authorization", `Bearer ${customerToken}`)
+				.send(updatePayload);
+
+			expect(response.status).toBe(200);
+			expect(response.body.data.name.first).toBe("Updated");
+			// Verifying the change in the database
+			const dbUser = await User.findOne({ email: "customer@test.com" });
+			expect(dbUser.name.first).toBe("Updated");
+		});
+
+		it("should return a 400 error for invalid update data", async () => {
+			const invalidUpdate = { phone: "12345" }; // Invalid phone number
+			const response = await request
+				.patch("/api/v1/users/me")
+				.set("Authorization", `Bearer ${customerToken}`)
+				.send(invalidUpdate);
+
+			expect(response.status).toBe(400);
+			expect(response.body.errors[0].msg).toContain("phone number");
+		});
+	});
 });

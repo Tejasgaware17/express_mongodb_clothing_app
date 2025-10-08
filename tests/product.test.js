@@ -173,4 +173,61 @@ describe("Product Endpoints", () => {
 			expect(response.status).toBe(404);
 		});
 	});
+
+    
+	describe("PATCH /api/v1/products/:productId", () => {
+		it("should allow an admin to update a product", async () => {
+			const product = await Product.findOne({ "style.fit": "Regular" });
+			const updatePayload = {
+				price: 1100,
+				description: "Updated description",
+			};
+
+			const response = await request
+				.patch(`/api/v1/products/${product.productId}`)
+				.set("Authorization", `Bearer ${adminToken}`)
+				.send(updatePayload);
+
+			expect(response.status).toBe(200);
+			expect(response.body.data.price).toBe(1100);
+			expect(response.body.data.description).toBe("Updated description");
+		});
+
+		it("should forbid a non-admin from updating a product", async () => {
+			const product = await Product.findOne({ "style.fit": "Regular" });
+
+			const response = await request
+				.patch(`/api/v1/products/${product.productId}`)
+				.set("Authorization", `Bearer ${customerToken}`)
+				.send({ price: 1200 });
+
+			expect(response.status).toBe(403);
+		});
+	});
+
+	describe("DELETE /api/v1/products/:productId", () => {
+		it("should allow an admin to delete a product", async () => {
+			const product = await Product.findOne({ "style.fit": "Slim" });
+
+			const response = await request
+				.delete(`/api/v1/products/${product.productId}`)
+				.set("Authorization", `Bearer ${adminToken}`);
+
+			expect(response.status).toBe(200);
+
+			// Verifying the product is actually deleted
+			const deletedProduct = await Product.findById(product._id);
+			expect(deletedProduct).toBeNull();
+		});
+
+		it("should forbid a non-admin from deleting a product", async () => {
+			const product = await Product.findOne({ "style.fit": "Slim" });
+
+			const response = await request
+				.delete(`/api/v1/products/${product.productId}`)
+				.set("Authorization", `Bearer ${customerToken}`);
+
+			expect(response.status).toBe(403);
+		});
+	});
 });

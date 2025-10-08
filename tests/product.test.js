@@ -12,7 +12,8 @@ describe("Product Endpoints", () => {
 	let mongoServer;
 	let adminToken;
 	let customerToken;
-	let categoryId;
+	let tShirtCategoryId;
+	let jeansCategoryId;
 
 	beforeAll(async () => {
 		logger.silent = true;
@@ -46,8 +47,11 @@ describe("Product Endpoints", () => {
 		customerToken = customerLoginRes.body.data.accessToken;
 
 		// Creating a category to use for products
-		const category = await Category.create({ name: "T-Shirts" });
-		categoryId = category._id;
+		const tShirtCategory = await Category.create({ name: "T-Shirts" });
+		tShirtCategoryId = tShirtCategory._id;
+
+		const jeansCategory = await Category.create({ name: "Jeans" });
+		jeansCategoryId = jeansCategory._id;
 	});
 
 	afterAll(async () => {
@@ -56,9 +60,28 @@ describe("Product Endpoints", () => {
 		logger.silent = false;
 	});
 
-	// Clearing products before each test
 	beforeEach(async () => {
 		await Product.deleteMany({});
+		await Product.create({
+			productType: "top-wear",
+			price: 1000,
+			title: "Seed T-Shirt",
+			description: "A test t-shirt.",
+			gender: "men",
+			category: tShirtCategoryId,
+			style: { fit: "Regular", material: "Cotton", pattern: "Solid" },
+			variants: [{ color: "Black", sizes: [{ size: "M", stock: 10 }] }],
+		});
+		await Product.create({
+			productType: "bottom-wear",
+			price: 2500,
+			title: "Seed Jeans",
+			description: "A test pair of jeans.",
+			gender: "women",
+			category: jeansCategoryId,
+			style: { fit: "Slim", material: "Denim", pattern: "Washed" },
+			variants: [{ color: "Blue", sizes: [{ size: 32, stock: 15 }] }],
+		});
 	});
 
 	// TESTS
@@ -85,7 +108,7 @@ describe("Product Endpoints", () => {
 			const response = await request
 				.post("/api/v1/products")
 				.set("Authorization", `Bearer ${adminToken}`)
-				.send({ ...productData, category: categoryId });
+				.send({ ...productData, category: tShirtCategoryId });
 
 			expect(response.status).toBe(201);
 			expect(response.body.success).toBe(true);
@@ -97,7 +120,7 @@ describe("Product Endpoints", () => {
 			const response = await request
 				.post("/api/v1/products")
 				.set("Authorization", `Bearer ${customerToken}`)
-				.send({ ...productData, category: categoryId });
+				.send({ ...productData, category: tShirtCategoryId });
 
 			expect(response.status).toBe(403);
 		});
@@ -110,6 +133,44 @@ describe("Product Endpoints", () => {
 
 			expect(response.status).toBe(400);
 			expect(response.body.success).toBe(false);
+		});
+	});
+
+	describe("GET /api/v1/products", () => {
+		it("should fetch a list of all products", async () => {
+			const response = await request.get("/api/v1/products");
+			expect(response.status).toBe(200);
+			expect(response.body.data.products).toHaveLength(2);
+		});
+
+		it("should filter products by gender", async () => {
+			const response = await request.get("/api/v1/products?gender=women");
+			expect(response.status).toBe(200);
+			expect(response.body.data.products).toHaveLength(1);
+			expect(response.body.data.products[0].gender).toBe("women");
+		});
+
+		it("should sort products by price (descending)", async () => {
+			const response = await request.get("/api/v1/products?sort=-price");
+			expect(response.status).toBe(200);
+			expect(response.body.data.products[0].price).toBe(2500);
+		});
+	});
+
+	describe("GET /api/v1/products/:productId", () => {
+		it("should fetch a single product by its ID", async () => {
+			const allProductsRes = await request.get("/api/v1/products");
+			const firstProductId = allProductsRes.body.data.products[0].productId;
+
+			const response = await request.get(`/api/v1/products/${firstProductId}`);
+
+			expect(response.status).toBe(200);
+			expect(response.body.data.productId).toBe(firstProductId);
+		});
+
+		it("should return 404 for a non-existent product ID", async () => {
+			const response = await request.get("/api/v1/products/fake-id");
+			expect(response.status).toBe(404);
 		});
 	});
 });

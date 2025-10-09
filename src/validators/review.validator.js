@@ -13,3 +13,16 @@ export const createReviewValidator = [
 		.isLength({ max: 500 })
 		.withMessage("Comment cannot be more than 500 characters."),
 ];
+
+export const updateReviewValidator = [
+	body("rating")
+		.optional()
+		.isFloat({ min: 1, max: 5 })
+		.withMessage("Rating must be a number between 1 and 5."),
+
+	body("comment")
+		.optional()
+		.trim()
+		.isLength({ max: 500 })
+		.withMessage("Comment cannot be more than 500 characters."),
+];

@@ -15,8 +15,12 @@ import {
 	createProductValidator,
 	updateProductValidator,
 } from "../validators/index.js";
+import reviewRouter from "./review.route.js";
 
 const router = Router();
+
+// REVIEWS
+router.use("/:productId/reviews", reviewRouter);
 
 // PUBLIC ROUTES
 router.get("/", getAllProducts);

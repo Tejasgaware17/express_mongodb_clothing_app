@@ -69,3 +69,34 @@ export const getAllReviews = async (req, res, next) => {
 		next(error);
 	}
 };
+
+export const updateReview = async (req, res, next) => {
+    try {
+        const { reviewId } = req.params;
+        const { rating, comment } = req.body;
+        const review = await Review.findById(reviewId);
+        if (!review) {
+            throw new NotFoundError(`No review found with id: ${reviewId}`);
+        }
+
+        const user = await User.findOne({ userId: req.user.userId });
+        if (review.user.toString() !== user._id.toString()) {
+            throw new UnauthorizedError("You are not authorized to edit this review.");
+        }
+		
+        if (rating) review.rating = rating;
+        if (comment) review.comment = comment;
+        
+        await review.save();
+
+        return res.status(StatusCodes.OK).json(
+            sendResponse({
+                success: true,
+                message: "Review updated successfully.",
+                data: review,
+            })
+        );
+    } catch (error) {
+        next(error);
+    }
+};

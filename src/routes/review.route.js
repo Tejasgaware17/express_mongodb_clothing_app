@@ -1,10 +1,17 @@
 import { Router } from "express";
-import { createReview, getAllReviews } from "../controllers/index.js";
+import {
+	createReview,
+	getAllReviews,
+	updateReview,
+} from "../controllers/index.js";
 import {
 	authenticateUser,
 	handleValidationErrors,
 } from "../middlewares/index.js";
-import { createReviewValidator } from "../validators/index.js";
+import {
+	createReviewValidator,
+	updateReviewValidator,
+} from "../validators/index.js";
 
 const router = Router({ mergeParams: true });
 
@@ -17,5 +24,13 @@ router
 		createReview
 	)
 	.get(getAllReviews);
+
+router.patch(
+	"/:reviewId",
+	authenticateUser,
+	updateReviewValidator,
+	handleValidationErrors,
+	updateReview
+);
 
 export default router;

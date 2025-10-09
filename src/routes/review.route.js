@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createReview } from "../controllers/index.js";
+import { createReview, getAllReviews } from "../controllers/index.js";
 import {
 	authenticateUser,
 	handleValidationErrors,
@@ -8,12 +8,14 @@ import { createReviewValidator } from "../validators/index.js";
 
 const router = Router({ mergeParams: true });
 
-router.post(
-	"/",
-	authenticateUser,
-	createReviewValidator,
-	handleValidationErrors,
-	createReview
-);
+router
+	.route("/")
+	.post(
+		authenticateUser,
+		createReviewValidator,
+		handleValidationErrors,
+		createReview
+	)
+	.get(getAllReviews);
 
 export default router;

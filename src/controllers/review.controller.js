@@ -25,7 +25,7 @@ export const createReview = async (req, res, next) => {
 				"You have already submitted a review for this product."
 			);
 		}
-        
+
 		const review = await Review.create({
 			rating,
 			comment,
@@ -38,6 +38,31 @@ export const createReview = async (req, res, next) => {
 				success: true,
 				message: "Review submitted successfully.",
 				data: review,
+			})
+		);
+	} catch (error) {
+		next(error);
+	}
+};
+
+export const getAllReviews = async (req, res, next) => {
+	try {
+		const { productId } = req.params;
+		const product = await Product.findOne({ productId });
+		if (!product) {
+			throw new NotFoundError(`No product found with id: ${productId}`);
+		}
+
+		const reviews = await Review.find({ product: product._id }).populate({
+			path: "user",
+			select: "name",
+		})
+
+		return res.status(StatusCodes.OK).json(
+			sendResponse({
+				success: true,
+				message: "Reviews fetched successfully.",
+				data: { reviews, count: reviews.length },
 			})
 		);
 	} catch (error) {

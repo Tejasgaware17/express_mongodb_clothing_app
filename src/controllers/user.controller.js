@@ -1,5 +1,5 @@
 import { StatusCodes } from "http-status-codes";
-import User from "../models/user.model.js";
+import { User } from "../models/index.js";
 import { logger, sendResponse } from "../utils/index.js";
 import { NotFoundError, BadRequestError } from "../errors/index.js";
 import { config } from "../config/index.js";

@@ -2,5 +2,12 @@ import logger from "./logger.js";
 import sendResponse from "./sendResponse.js";
 import { generateTokens } from "./generateTokens.js";
 import { verifyToken } from "./verifyToken.js";
+import { calculateAverageRating } from "./review.utils.js";
 
-export { logger, sendResponse, generateTokens, verifyToken };
+export {
+	logger,
+	sendResponse,
+	generateTokens,
+	verifyToken,
+	calculateAverageRating,
+};

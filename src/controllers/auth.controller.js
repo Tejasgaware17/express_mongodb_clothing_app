@@ -1,6 +1,6 @@
 import { StatusCodes } from "http-status-codes";
 import crypto from "crypto";
-import User from "../models/user.model.js";
+import { User } from "../models/index.js";
 import { BadRequestError, UnauthorizedError } from "../errors/index.js";
 import {
 	logger,
@@ -111,7 +111,7 @@ export const refreshToken = async (req, res, next) => {
 		const user = await User.findOne({
 			userId: payload.userId,
 			refreshTokens: hashedIncomingToken,
-		});
+		}).select("+role");
 		if (!user) {
 			throw new UnauthorizedError(
 				"Authentication invalid. Token has been invalidated."

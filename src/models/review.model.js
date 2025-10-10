@@ -1,4 +1,4 @@
-import { Schema, model } from "mongoose";
+import mongoose, { Schema, model } from "mongoose";
 
 const ReviewSchema = new Schema(
 	{
@@ -43,9 +43,9 @@ ReviewSchema.statics.calculateAverageRating = async function (productId) {
 	]);
 
 	try {
-		await this.model("Product").findByIdAndUpdate(productId, {
+		await mongoose.model("Product").findByIdAndUpdate(productId, {
 			ratings: {
-				average: reviewStats[0]?.averageRating || 0,
+				average: reviewStats[0]?.averageRating.toFixed(1) || 0,
 				count: reviewStats[0]?.numberOfReviews || 0,
 			},
 		});

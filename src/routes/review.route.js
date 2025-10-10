@@ -3,6 +3,7 @@ import {
 	createReview,
 	getAllReviews,
 	updateReview,
+	deleteReview,
 } from "../controllers/index.js";
 import {
 	authenticateUser,
@@ -25,12 +26,10 @@ router
 	)
 	.get(getAllReviews);
 
-router.patch(
-	"/:reviewId",
-	authenticateUser,
-	updateReviewValidator,
-	handleValidationErrors,
-	updateReview
-);
+router
+	.route("/:reviewId")
+	.all(authenticateUser)
+	.patch(updateReviewValidator, handleValidationErrors, updateReview)
+	.delete(deleteReview);
 
 export default router;

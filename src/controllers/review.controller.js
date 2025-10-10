@@ -56,7 +56,7 @@ export const getAllReviews = async (req, res, next) => {
 		const reviews = await Review.find({ product: product._id }).populate({
 			path: "user",
 			select: "name",
-		})
+		});
 
 		return res.status(StatusCodes.OK).json(
 			sendResponse({
@@ -71,32 +71,62 @@ export const getAllReviews = async (req, res, next) => {
 };
 
 export const updateReview = async (req, res, next) => {
-    try {
-        const { reviewId } = req.params;
-        const { rating, comment } = req.body;
-        const review = await Review.findById(reviewId);
-        if (!review) {
-            throw new NotFoundError(`No review found with id: ${reviewId}`);
-        }
+	try {
+		const { reviewId } = req.params;
+		const { rating, comment } = req.body;
+		const review = await Review.findById(reviewId);
+		if (!review) {
+			throw new NotFoundError(`No review found with id: ${reviewId}`);
+		}
 
-        const user = await User.findOne({ userId: req.user.userId });
-        if (review.user.toString() !== user._id.toString()) {
-            throw new UnauthorizedError("You are not authorized to edit this review.");
-        }
-		
-        if (rating) review.rating = rating;
-        if (comment) review.comment = comment;
-        
-        await review.save();
+		const user = await User.findOne({ userId: req.user.userId });
+		if (review.user.toString() !== user._id.toString()) {
+			throw new UnauthorizedError(
+				"You are not authorized to edit this review."
+			);
+		}
 
-        return res.status(StatusCodes.OK).json(
-            sendResponse({
-                success: true,
-                message: "Review updated successfully.",
-                data: review,
-            })
-        );
-    } catch (error) {
-        next(error);
-    }
+		if (rating) review.rating = rating;
+		if (comment) review.comment = comment;
+
+		await review.save();
+
+		return res.status(StatusCodes.OK).json(
+			sendResponse({
+				success: true,
+				message: "Review updated successfully.",
+				data: review,
+			})
+		);
+	} catch (error) {
+		next(error);
+	}
+};
+
+export const deleteReview = async (req, res, next) => {
+	try {
+		const { reviewId } = req.params;
+
+		const review = await Review.findById(reviewId);
+		if (!review) {
+			throw new NotFoundError(`No review found with id: ${reviewId}`);
+		}
+		const user = await User.findOne({ userId: req.user.userId });
+		if (review.user.toString() !== user._id.toString()) {
+			throw new UnauthorizedError(
+				"You are not authorized to delete this review."
+			);
+		}
+
+		await review.deleteOne(); // To trigger the post("remove") of review model
+
+		return res.status(StatusCodes.OK).json(
+			sendResponse({
+				success: true,
+				message: "Review deleted successfully.",
+			})
+		);
+	} catch (error) {
+		next(error);
+	}
 };

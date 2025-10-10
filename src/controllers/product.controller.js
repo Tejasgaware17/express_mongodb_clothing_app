@@ -1,5 +1,11 @@
 import { StatusCodes } from "http-status-codes";
-import { TopWear, BottomWear, Category, Product } from "../models/index.js";
+import {
+	TopWear,
+	BottomWear,
+	Category,
+	Product,
+	Review,
+} from "../models/index.js";
 import { sendResponse } from "../utils/index.js";
 import { NotFoundError } from "../errors/index.js";
 

@@ -182,6 +182,18 @@ describe("Review Endpoints", () => {
 			expect(res.body.message).toMatch(/not authorized/i);
 		});
 
+		it("should recalculate product rating after review update", async () => {
+			// The initial review has a rating of 3
+			await request
+				.patch(`/api/v1/reviews/${reviewId}`)
+				.set("Authorization", `Bearer ${customerToken}`)
+				.send({ rating: 1 }); // Updated to 1
+
+			const productAfter = await Product.findById(productObjectId);
+			expect(productAfter.ratings.count).toBe(1);
+			expect(productAfter.ratings.average).toBe(1);
+		});
+
 		it("should recalculate product rating after review deletion", async () => {
 			// Second review to ensure change in avg
 			const user2 = await User.findOne({ email: "another@test.com" });

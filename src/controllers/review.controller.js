@@ -1,6 +1,6 @@
 import { StatusCodes } from "http-status-codes";
 import { User, Review, Product } from "../models/index.js";
-import { sendResponse } from "../utils/index.js";
+import { sendResponse, calculateAverageRating } from "../utils/index.js";
 import {
 	BadRequestError,
 	NotFoundError,
@@ -37,7 +37,7 @@ export const createReview = async (req, res, next) => {
 			user: user._id,
 		});
 
-		await Review.calculateAverageRating(product._id);
+		await calculateAverageRating(product._id);
 
 		return res.status(StatusCodes.CREATED).json(
 			sendResponse({
@@ -96,6 +96,7 @@ export const updateReview = async (req, res, next) => {
 		if (comment) review.comment = comment;
 
 		await review.save();
+		await calculateAverageRating(review.product);
 
 		return res.status(StatusCodes.OK).json(
 			sendResponse({
@@ -126,7 +127,7 @@ export const deleteReview = async (req, res, next) => {
 
 		const productId = review.product;
 		await review.deleteOne();
-		await Review.calculateAverageRating(productId);
+		await calculateAverageRating(productId);
 
 		return res.status(StatusCodes.OK).json(
 			sendResponse({

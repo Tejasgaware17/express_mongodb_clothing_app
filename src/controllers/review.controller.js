@@ -1,7 +1,11 @@
 import { StatusCodes } from "http-status-codes";
 import { User, Review, Product } from "../models/index.js";
 import { sendResponse } from "../utils/index.js";
-import { BadRequestError, NotFoundError } from "../errors/index.js";
+import {
+	BadRequestError,
+	NotFoundError,
+	UnauthorizedError,
+} from "../errors/index.js";
 
 export const createReview = async (req, res, next) => {
 	try {
@@ -32,6 +36,8 @@ export const createReview = async (req, res, next) => {
 			product: product._id,
 			user: user._id,
 		});
+
+		await Review.calculateAverageRating(product._id);
 
 		return res.status(StatusCodes.CREATED).json(
 			sendResponse({
@@ -118,7 +124,9 @@ export const deleteReview = async (req, res, next) => {
 			);
 		}
 
-		await review.deleteOne(); // To trigger the post("remove") of review model
+		const productId = review.product;
+		await review.deleteOne();
+		await Review.calculateAverageRating(productId);
 
 		return res.status(StatusCodes.OK).json(
 			sendResponse({

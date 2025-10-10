@@ -43,11 +43,12 @@ ReviewSchema.statics.calculateAverageRating = async function (productId) {
 	]);
 
 	try {
+		const average = reviewStats[0]?.averageRating
+			? reviewStats[0].averageRating.toFixed(1)
+			: 0;
+		const count = reviewStats[0]?.numberOfReviews || 0;
 		await mongoose.model("Product").findByIdAndUpdate(productId, {
-			ratings: {
-				average: reviewStats[0]?.averageRating.toFixed(1) || 0,
-				count: reviewStats[0]?.numberOfReviews || 0,
-			},
+			ratings: { average, count },
 		});
 	} catch (error) {
 		logger.error(

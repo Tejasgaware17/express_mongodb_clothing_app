@@ -154,8 +154,7 @@ export const deleteProduct = async (req, res, next) => {
 			throw new NotFoundError(`No product found with id: ${productId}`);
 		}
 
-		// Delete reviews associated to the product
-
+		await Review.deleteMany({ product: product._id });
 		await Product.findByIdAndDelete(product._id);
 
 		return res.status(StatusCodes.OK).json(

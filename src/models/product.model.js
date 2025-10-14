@@ -34,8 +34,18 @@ const VariantSchema = new Schema(
 const productSchemaOptions = {
 	timestamps: true,
 	discriminatorKey: "productType",
-	toJSON: { virtuals: true },
-	toObject: { virtuals: true },
+	toJSON: {
+		virtuals: true,
+		transform: function (doc, ret) {
+			delete ret.__v;
+		},
+	},
+	toObject: {
+		virtuals: true,
+		transform: function (doc, ret) {
+			delete ret.__v;
+		},
+	},
 };
 
 const ProductSchema = new Schema(
@@ -120,7 +130,6 @@ ProductSchema.pre("validate", async function (next) {
 });
 
 const Product = model("Product", ProductSchema);
-
 
 // DISCRIMINATOR TOP-WEAR
 const TopWear = Product.discriminator(

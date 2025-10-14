@@ -24,7 +24,7 @@ const SizeSchema = new Schema(
 
 const VariantSchema = new Schema(
 	{
-		color: { type: String, required: true, trim: true },
+		color: { type: String, required: true, trim: true, lowercase: true },
 		sizes: [SizeSchema],
 	},
 	{ _id: false }
@@ -34,6 +34,8 @@ const VariantSchema = new Schema(
 const productSchemaOptions = {
 	timestamps: true,
 	discriminatorKey: "productType",
+	toJSON: { virtuals: true },
+	toObject: { virtuals: true },
 };
 
 const ProductSchema = new Schema(
@@ -69,6 +71,14 @@ const ProductSchema = new Schema(
 	productSchemaOptions
 );
 
+ProductSchema.virtual("sellingPrice").get(function () {
+	if (this.price && this.discount > 0) {
+		const discountedPrice = (this.price * this.discount) / 100;
+		return Math.round(this.price - discountedPrice);
+	}
+	return this.price;
+});
+
 ProductSchema.pre("validate", async function (next) {
 	if (!this.isNew) {
 		return next();
@@ -76,13 +86,9 @@ ProductSchema.pre("validate", async function (next) {
 
 	try {
 		const style = this.style || {};
-        // Product styles
-		const titleParts = [
-			style.fit,
-			style.pattern,
-		];
+		const titleParts = [style.fit, style.pattern]; // Product styles
 
-        // Category
+		// Category
 		let categoryName = "";
 		if (this.category) {
 			if (this.category.name) {
@@ -115,9 +121,8 @@ ProductSchema.pre("validate", async function (next) {
 
 const Product = model("Product", ProductSchema);
 
-// DISCRIMINATORS
 
-// TOP-WEAR
+// DISCRIMINATOR TOP-WEAR
 const TopWear = Product.discriminator(
 	"top-wear",
 	new Schema({
@@ -132,7 +137,7 @@ const TopWear = Product.discriminator(
 	})
 );
 
-// BOTTOM-WEAR
+// DISCRIMINATOR BOTTOM-WEAR
 const BottomWear = Product.discriminator(
 	"bottom-wear",
 	new Schema({

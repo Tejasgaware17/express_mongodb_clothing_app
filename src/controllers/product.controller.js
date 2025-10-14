@@ -7,26 +7,78 @@ import {
 	Review,
 } from "../models/index.js";
 import { sendResponse } from "../utils/index.js";
-import { NotFoundError } from "../errors/index.js";
+import { NotFoundError, BadRequestError } from "../errors/index.js";
 
 export const createProduct = async (req, res, next) => {
 	try {
-		const { productType, category: categoryId, ...productData } = req.body;
-
+		const {
+			productType,
+			category: categoryId,
+			gender,
+			style,
+			price,
+			discount,
+			description,
+			isActive,
+			images,
+			variants,
+		} = req.body;
 		const category = await Category.findById(categoryId);
 		if (!category) {
 			throw new NotFoundError(`No category found with id: ${categoryId}`);
 		}
 
-		productData.category = categoryId;
-		let product;
-		if (productType === "top-wear") {
-			product = await TopWear.create(productData);
-		} else if (productType === "bottom-wear") {
-			product = await BottomWear.create(productData);
-		} else {
+		// Checking the product details
+		const queryObject = {
+			productType,
+			category: categoryId,
+			gender,
+		};
+
+		if (style && typeof style === "object") {
+			for (const key in style) {
+				if (Object.prototype.hasOwnProperty.call(style, key)) {
+					queryObject[`style.${key}`] = {
+						$regex: `^${style[key]}$`,
+						$options: "i",
+					};
+				}
+			}
+		}
+
+		const existingProduct = await Product.findOne(queryObject);
+		if (existingProduct) {
+			throw new BadRequestError(
+				`This product already exists with the id: ${existingProduct.productId}`
+			);
+		}
+
+		// Creating the product
+		const productModels = {
+			"top-wear": TopWear,
+			"bottom-wear": BottomWear,
+		};
+		const ModelToCreate = productModels[productType];
+		if (!ModelToCreate) {
 			throw new BadRequestError("Invalid product type specified.");
 		}
+		const productPayload = {
+			category: category,
+			gender,
+			style,
+			price,
+			discount,
+			description,
+			isActive,
+			images,
+			variants,
+		};
+
+		const product = await ModelToCreate.create(productPayload);
+		await product.populate({
+			path: "category",
+			select: "name slug",
+		});
 
 		return res.status(StatusCodes.CREATED).json(
 			sendResponse({

@@ -94,10 +94,17 @@ export const createProduct = async (req, res, next) => {
 
 export const getAllProducts = async (req, res, next) => {
 	try {
-		const { sort, category, gender, search } = req.query;
-
-		// Filtering
+		const { search, gender, category, price, discount, sort, page, limit } =
+			req.query;
 		const queryObject = { isActive: true };
+
+		// Search
+		if (search) {
+			const searchRegex = new RegExp(search, "i");
+			queryObject.$or = [{ title: searchRegex }, { description: searchRegex }];
+		}
+
+		// Filters
 		if (gender) {
 			queryObject.gender = gender;
 		}
@@ -107,13 +114,25 @@ export const getAllProducts = async (req, res, next) => {
 			});
 			if (categoryDoc) {
 				queryObject.category = categoryDoc._id;
+			} else {
+				queryObject.category = null; // default
 			}
 		}
-		if (search) {
-			queryObject.title = { $regex: search, $options: "i" }; // Title search
-		}
 
-		let result = Product.find(queryObject).populate("category", "name slug");
+		// Numeric Range Filtering (Price and Discount)
+		const numericFilters = {};
+		if (price) {
+			numericFilters.price = {};
+			if (price.gte) numericFilters.price.$gte = Number(price.gte);
+			if (price.lte) numericFilters.price.$lte = Number(price.lte);
+		}
+		if (discount) {
+			numericFilters.discount = {};
+			if (discount.gte) numericFilters.discount.$gte = Number(discount.gte);
+		}
+		Object.assign(queryObject, numericFilters);
+
+		let result = Product.find(queryObject);
 
 		// Sorting
 		if (sort) {
@@ -124,20 +143,20 @@ export const getAllProducts = async (req, res, next) => {
 		}
 
 		// Pagination
-		const page = Number(req.query.page) || 1;
-		const limit = Number(req.query.limit) || 10;
-		const skip = (page - 1) * limit;
-		result = result.skip(skip).limit(limit);
+		const pageNum = Number(page) || 1;
+		const limitNum = Number(limit) || 10;
+		const skip = (pageNum - 1) * limitNum;
+		result = result.skip(skip).limit(limitNum);
 
-		const products = await result;
+		const products = await result.populate("category", "name slug");
+
 		const totalProducts = await Product.countDocuments(queryObject);
-		const totalPages = Math.ceil(totalProducts / limit);
-
+		const totalPages = Math.ceil(totalProducts / limitNum);
 		const pagination = {
 			totalProducts,
 			totalPages,
-			currentPage: page,
-			limit,
+			currentPage: pageNum,
+			limit: limitNum,
 		};
 
 		return res.status(StatusCodes.OK).json(
@@ -148,8 +167,8 @@ export const getAllProducts = async (req, res, next) => {
 				meta: pagination,
 			})
 		);
-	} catch (errors) {
-		next(errors);
+	} catch (error) {
+		next(error);
 	}
 };
 

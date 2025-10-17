@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import cookieParser from "cookie-parser";
+import qs from "qs"
 
 import { config } from "./config/index.js";
 import { StatusCodes } from "http-status-codes";
@@ -16,6 +17,7 @@ import routes from "./routes/index.js";
 const app = express();
 
 // Middlewares
+app.set("query parser", (str) => qs.parse(str));
 app.use(helmet());
 app.use(cors());
 app.use(express.json());

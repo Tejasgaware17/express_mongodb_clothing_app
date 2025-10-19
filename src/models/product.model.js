@@ -1,5 +1,6 @@
 import { Schema, model } from "mongoose";
 import { v4 as uuidv4 } from "uuid";
+import { generateTitle } from "../utils/index.js";
 
 // SUB-SCHEMAS
 const ImageSchema = new Schema(
@@ -90,43 +91,10 @@ ProductSchema.virtual("sellingPrice").get(function () {
 });
 
 ProductSchema.pre("validate", async function (next) {
-	if (!this.isNew) {
-		return next();
+	if (this.isNew) {
+		this.title = await generateTitle(this);
 	}
-
-	try {
-		const style = this.style || {};
-		const titleParts = [style.fit, style.pattern]; // Product styles
-
-		// Category
-		let categoryName = "";
-		if (this.category) {
-			if (this.category.name) {
-				categoryName = this.category.name;
-			} else {
-				const categoryDoc = await model("Category").findById(this.category);
-				if (categoryDoc) {
-					categoryName = categoryDoc.name;
-				}
-			}
-		}
-
-		// Combining the parts into a TITLE for product
-		const generatedTitle = titleParts
-			.filter((part) => part)
-			.join(" ")
-			.toUpperCase();
-		this.title = `${generatedTitle} ${categoryName.toUpperCase()}`.trim();
-		if (!this.title) {
-			this.title = `${this.productType
-				.toUpperCase()
-				.replace("WEAR", "")} - ${categoryName.toUpperCase()}`.trim();
-		}
-
-		next();
-	} catch (error) {
-		next(error);
-	}
+	next();
 });
 
 const Product = model("Product", ProductSchema);

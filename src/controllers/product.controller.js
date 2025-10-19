@@ -6,7 +6,7 @@ import {
 	Product,
 	Review,
 } from "../models/index.js";
-import { sendResponse } from "../utils/index.js";
+import { sendResponse, generateTitle } from "../utils/index.js";
 import { NotFoundError, BadRequestError } from "../errors/index.js";
 
 export const createProduct = async (req, res, next) => {
@@ -233,21 +233,13 @@ export const updateProduct = async (req, res, next) => {
 			}
 		}
 
-		if (req.body.style || req.body.category) {
-			let title = "";
-			let titleCategory;
-			let categoryDoc;
-			if (req.category) {
-				categoryDoc = await Category.findOne(req.category);
-			} else {
-				categoryDoc = await Category.findById(product.category);
-			}
-			titleCategory = categoryDoc.name;
-		}
-
 		Object.assign(product, otherUpdates);
 		if (style && typeof style === "object") {
 			Object.assign(product.style, style);
+		}
+
+		if (req.body.style || req.body.category) {
+			product.title = await generateTitle(product);
 		}
 
 		await product.save();

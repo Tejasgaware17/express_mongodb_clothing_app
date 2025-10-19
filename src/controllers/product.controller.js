@@ -198,18 +198,60 @@ export const getProduct = async (req, res, next) => {
 export const updateProduct = async (req, res, next) => {
 	try {
 		const { productId } = req.params;
-		const updateData = req.body;
-		if (updateData.productType) {
-			delete updateData.productType;
-		}
+		const { style, ...otherUpdates } = req.body;
 
-		const product = await Product.findOneAndUpdate({ productId }, updateData, {
-			new: true,
-			runValidators: true,
-		});
+		const product = await Product.findOne({ productId });
 		if (!product) {
 			throw new NotFoundError(`No product found with id: ${productId}`);
 		}
+
+		if (req.body.style || req.body.gender || req.body.category) {
+			const hypotheticalProduct = {
+				productType: product.productType,
+				category: req.body.category || product.category,
+				gender: req.body.gender || product.gender,
+				style: { ...product.style.toObject(), ...style },
+			};
+			const queryObject = {
+				category: hypotheticalProduct.category,
+				gender: hypotheticalProduct.gender,
+				_id: { $ne: product._id },
+			};
+			for (const key in hypotheticalProduct.style) {
+				if (hypotheticalProduct.style[key]) {
+					queryObject[`style.${key}`] = {
+						$regex: `^${hypotheticalProduct.style[key]}$`,
+						$options: "i",
+					};
+				}
+			}
+			const existingProduct = await Product.findOne(queryObject);
+			if (existingProduct) {
+				throw new BadRequestError(
+					"An update cannot result in a duplicate product."
+				);
+			}
+		}
+
+		if (req.body.style || req.body.category) {
+			let title = "";
+			let titleCategory;
+			let categoryDoc;
+			if (req.category) {
+				categoryDoc = await Category.findOne(req.category);
+			} else {
+				categoryDoc = await Category.findById(product.category);
+			}
+			titleCategory = categoryDoc.name;
+		}
+
+		Object.assign(product, otherUpdates);
+		if (style && typeof style === "object") {
+			Object.assign(product.style, style);
+		}
+
+		await product.save();
+		await product.populate({ path: "category", select: "name slug" });
 
 		return res.status(StatusCodes.OK).json(
 			sendResponse({

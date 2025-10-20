@@ -205,6 +205,44 @@ export const updateProduct = async (req, res, next) => {
 			throw new NotFoundError(`No product found with id: ${productId}`);
 		}
 
+		let filteredStyle = {};
+		if (style && typeof style === "object") {
+			const allowedStyleKeys = {
+				"top-wear": [
+					"fit",
+					"material",
+					"sleeve",
+					"neckline",
+					"closure",
+					"pattern",
+				],
+				"bottom-wear": [
+					"fit",
+					"material",
+					"length",
+					"rise",
+					"closure",
+					"pattern",
+				],
+			};
+			const validKeys = allowedStyleKeys[product.productType];
+			if (!validKeys) {
+				throw new BadRequestError("Cannot update style for this product type.");
+			}
+			for (const key in style) {
+				if (validKeys.includes(key)) {
+					filteredStyle[key] = style[key];
+				}
+			}
+		}
+
+		if (
+			Object.keys(otherUpdates).length === 0 &&
+			Object.keys(filteredStyle).length === 0
+		) {
+			throw new BadRequestError("No valid fields provided for update.");
+		}
+
 		if (req.body.style || req.body.gender || req.body.category) {
 			const hypotheticalProduct = {
 				productType: product.productType,
@@ -234,9 +272,7 @@ export const updateProduct = async (req, res, next) => {
 		}
 
 		Object.assign(product, otherUpdates);
-		if (style && typeof style === "object") {
-			Object.assign(product.style, style);
-		}
+		Object.assign(product.style, filteredStyle);
 
 		if (req.body.style || req.body.category) {
 			product.title = await generateTitle(product);

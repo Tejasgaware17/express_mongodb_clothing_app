@@ -2,6 +2,7 @@ import { StatusCodes } from "http-status-codes";
 import { Category } from "../models/index.js";
 import { sendResponse } from "../utils/index.js";
 import { BadRequestError, NotFoundError } from "../errors/index.js";
+import slugify from "slugify";
 
 export const createCategory = async (req, res, next) => {
 	try {
@@ -60,6 +61,10 @@ export const updateCategory = async (req, res, next) => {
 	try {
 		const { slug } = req.params;
 		const updateData = req.body;
+
+		if (updateData.name) {
+			updateData.slug = slugify(updateData.name, { lower: true, strict: true });
+		}
 
 		const category = await Category.findOneAndUpdate({ slug }, updateData, {
 			new: true,

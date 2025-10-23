@@ -80,6 +80,12 @@ export const updateReview = async (req, res, next) => {
 	try {
 		const { reviewId } = req.params;
 		const { rating, comment } = req.body;
+		if (rating === undefined && comment === undefined) {
+			throw new BadRequestError(
+				"Please provide a rating or comment to update."
+			);
+		}
+		
 		const review = await Review.findById(reviewId);
 		if (!review) {
 			throw new NotFoundError(`No review found with id: ${reviewId}`);

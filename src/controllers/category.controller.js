@@ -61,6 +61,10 @@ export const updateCategory = async (req, res, next) => {
 	try {
 		const { slug } = req.params;
 		const updateData = req.body;
+		
+		if (Object.keys(updateData).length === 0) {
+			throw new BadRequestError("No fields provided for update.");
+		}
 
 		if (updateData.name) {
 			updateData.slug = slugify(updateData.name, { lower: true, strict: true });

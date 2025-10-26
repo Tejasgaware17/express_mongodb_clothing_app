@@ -84,6 +84,125 @@ describe("User Endpoints", () => {
 		});
 	});
 
+	describe("POST /api/v1/users/me/addresses", () => {
+		beforeEach(async () => {
+			await User.updateOne(
+				{ _id: customerUserId },
+				{ $set: { addresses: [] } }
+			);
+		});
+
+		it("should allow a user to create a new address", async () => {
+			const response = await request
+				.post("/api/v1/users/me/addresses")
+				.set("Authorization", `Bearer ${customerToken}`)
+				.send({
+					label: "home",
+					area: "123 Test St",
+					city: "Testville",
+					state: "Test State",
+					postalCode: "123456",
+				});
+
+			expect(response.status).toBe(201);
+			expect(response.body.success).toBe(true);
+			expect(response.body.data).toHaveLength(1);
+			expect(response.body.data[0].label).toBe("home");
+
+			const user = await User.findById(customerUserId);
+			expect(user.addresses).toHaveLength(1);
+			expect(user.addresses[0].city).toBe("Testville");
+		});
+
+		it("should reject creating an address if the label already exists", async () => {
+			await request
+				.post("/api/v1/users/me/addresses")
+				.set("Authorization", `Bearer ${customerToken}`)
+				.send({
+					label: "home",
+					area: "Area1",
+					city: "City1",
+					state: "State1",
+					postalCode: "111111",
+				});
+
+			const response = await request
+				.post("/api/v1/users/me/addresses")
+				.set("Authorization", `Bearer ${customerToken}`)
+				.send({
+					label: "home",
+					area: "Area2",
+					city: "City2",
+					state: "State2",
+					postalCode: "222222",
+				});
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toMatch(/label .* already exists/i);
+		});
+
+		it("should reject creating an address if the user exceeds the limit", async () => {
+			await request
+				.post("/api/v1/users/me/addresses")
+				.set("Authorization", `Bearer ${customerToken}`)
+				.send({
+					label: "addr1",
+					area: "area1",
+					city: "city1",
+					state: "state1",
+					postalCode: "111111",
+				});
+			await request
+				.post("/api/v1/users/me/addresses")
+				.set("Authorization", `Bearer ${customerToken}`)
+				.send({
+					label: "addr2",
+					area: "area2",
+					city: "city2",
+					state: "state2",
+					postalCode: "222222",
+				});
+			await request
+				.post("/api/v1/users/me/addresses")
+				.set("Authorization", `Bearer ${customerToken}`)
+				.send({
+					label: "addr3",
+					area: "area3",
+					city: "city3",
+					state: "state3",
+					postalCode: "333333",
+				});
+
+			const response = await request
+				.post("/api/v1/users/me/addresses")
+				.set("Authorization", `Bearer ${customerToken}`)
+				.send({
+					label: "addr4",
+					area: "Area4",
+					city: "City4",
+					state: "State4",
+					postalCode: "444444",
+				});
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toMatch(/can only store up to/i);
+		});
+
+		it("should reject creating an address with invalid data (missing field)", async () => {
+			const response = await request
+				.post("/api/v1/users/me/addresses")
+				.set("Authorization", `Bearer ${customerToken}`)
+				.send({ label: "incomplete", area: "Area", city: "City" });
+
+			expect(response.status).toBe(400);
+			expect(response.body.success).toBe(false);
+			expect(response.body.errors).toBeDefined();
+			expect(response.body.errors.some((err) => err.path === "state")).toBe(
+				true
+			);
+		});
+	});
+
 	describe("PATCH /api/v1/users/me", () => {
 		it("should allow a user to update their own profile", async () => {
 			const updatePayload = { firstName: "UpdatedName" };

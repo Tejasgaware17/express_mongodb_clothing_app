@@ -250,17 +250,42 @@ export const updateProduct = async (req, res, next) => {
 				gender: req.body.gender || product.gender,
 				style: { ...product.style.toObject(), ...style },
 			};
+
 			const queryObject = {
+				productType: hypotheticalProduct.productType,
 				category: hypotheticalProduct.category,
 				gender: hypotheticalProduct.gender,
 				_id: { $ne: product._id },
 			};
-			for (const key in hypotheticalProduct.style) {
-				if (hypotheticalProduct.style[key]) {
-					queryObject[`style.${key}`] = {
-						$regex: `^${hypotheticalProduct.style[key]}$`,
-						$options: "i",
-					};
+
+			const allowedStyleKeys = {
+				"top-wear": [
+					"fit",
+					"material",
+					"sleeve",
+					"neckline",
+					"closure",
+					"pattern",
+				],
+				"bottom-wear": [
+					"fit",
+					"material",
+					"length",
+					"rise",
+					"closure",
+					"pattern",
+				],
+			};
+			const validKeys = allowedStyleKeys[hypotheticalProduct.productType];
+
+			if (validKeys) {
+				for (const key of validKeys) {
+					if (hypotheticalProduct.style[key]) {
+						queryObject[`style.${key}`] = {
+							$regex: `^${hypotheticalProduct.style[key]}$`,
+							$options: "i",
+						};
+					}
 				}
 			}
 			const existingProduct = await Product.findOne(queryObject);

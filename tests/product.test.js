@@ -9,6 +9,7 @@ import {
 	Category,
 	TopWear,
 	BottomWear,
+	Review,
 } from "../src/models/index.js";
 import { logger } from "../src/utils/index.js";
 
@@ -16,12 +17,9 @@ const request = supertest(app);
 
 describe("Product Endpoints", () => {
 	let mongoServer;
-	let adminToken;
-	let customerToken;
-	let tShirtCategoryId;
-	let jeansCategoryId;
-	let sampleProductId; // Product id for reference
-	let sampleProductObjectId; // Product objectId for reference
+	let adminToken, customerToken, customerUserId;
+	let tShirtCategoryId, jeansCategoryId;
+	let sampleProductId, sampleProductObjectId; // Product Id & objectId for reference
 
 	beforeAll(async () => {
 		logger.silent = true;
@@ -52,6 +50,7 @@ describe("Product Endpoints", () => {
 			password: "Password123!",
 		});
 		customerToken = customerLoginRes.body.data.accessToken;
+		customerUserId = customerLoginRes.body.data.user._id;
 
 		// Creating Categories
 		const tShirtCategory = await Category.create({ name: "T-Shirt" });
@@ -370,6 +369,32 @@ describe("Product Endpoints", () => {
 
 			const deletedProduct = await Product.findById(sampleProductObjectId);
 			expect(deletedProduct).toBeNull();
+		});
+
+		it("should delete all associated reviews when a product is deleted", async () => {
+			await Review.create({
+				rating: 5,
+				comment: "This review should be deleted",
+				user: customerUserId,
+				product: sampleProductObjectId,
+			});
+
+			let reviews = await Review.find({ product: sampleProductObjectId });
+			expect(reviews).toHaveLength(1);
+
+			await request
+				.delete(`/api/v1/products/${sampleProductId}`)
+				.set("Authorization", `Bearer ${adminToken}`);
+
+			reviews = await Review.find({ product: sampleProductObjectId });
+
+			const response = await request.get(
+				`/api/v1/products/${sampleProductObjectId}/reviews`
+			);
+			expect(response.status).toBe(404);
+			expect(response.body.success).toBe(false);
+			expect(response.body.message).toMatch(/No product found/i);
+			expect(reviews).toHaveLength(0);
 		});
 
 		it("should forbid a non-admin user from deleting a product", async () => {

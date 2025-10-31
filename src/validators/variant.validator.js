@@ -26,3 +26,9 @@ export const addSizeValidator = [
 		.isNumeric({ no_symbols: true })
 		.withMessage("Stock must be a positive number."),
 ];
+
+export const updateStockValidator = [
+	body("stock")
+		.notEmpty().withMessage("Stock is required.")
+		.isNumeric({ no_symbols: true }).withMessage("Stock must be a positive number."),
+];

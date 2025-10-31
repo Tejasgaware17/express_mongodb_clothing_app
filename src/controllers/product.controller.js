@@ -400,3 +400,43 @@ export const addProductVariantSize = async (req, res, next) => {
 		next(error);
 	}
 };
+
+export const updateStock = async (req, res, next) => {
+	try {
+		const { productId, color, size } = req.params;
+		const { stock } = req.body;
+		const normalizedColor = color.toLowerCase();
+
+		const product = await Product.findOne({ productId });
+		if (!product) {
+			throw new NotFoundError(`No product found with id: ${productId}`);
+		}
+
+		const variant = product.variants.find((v) => v.color === normalizedColor);
+		if (!variant) {
+			throw new NotFoundError(`No variant found with color: ${color}`);
+		}
+
+		const sizeToUpdate = variant.sizes.find(
+			(s) => String(s.size).toLowerCase() === String(size).toLowerCase()
+		);
+		if (!sizeToUpdate) {
+			throw new NotFoundError(
+				`No size '${size}' found for the ${color} variant.`
+			);
+		}
+
+		sizeToUpdate.stock = stock;
+		await product.save();
+
+		return res.status(StatusCodes.OK).json(
+			sendResponse({
+				success: true,
+				message: "Stock updated successfully.",
+				data: product.variants,
+			})
+		);
+	} catch (error) {
+		next(error);
+	}
+};

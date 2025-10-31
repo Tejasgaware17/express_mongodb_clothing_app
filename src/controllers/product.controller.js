@@ -324,3 +324,39 @@ export const deleteProduct = async (req, res, next) => {
 		next(error);
 	}
 };
+
+// VARIANT CONTROLLERS
+export const addProductVariant = async (req, res, next) => {
+	try {
+		const { productId } = req.params;
+		const { color, sizes } = req.body;
+
+		const product = await Product.findOne({ productId });
+		if (!product) {
+			throw new NotFoundError(`No product found with id: ${productId}`);
+		}
+
+		const colorExists = product.variants.some(
+			(variant) => variant.color.toLowerCase() === color.toLowerCase()
+		);
+		if (colorExists) {
+			throw new BadRequestError(
+				`A variant with the color '${color}' already exists for this product.`
+			);
+		}
+
+		const newVariant = { color, sizes };
+		product.variants.push(newVariant);
+		await product.save();
+
+		return res.status(StatusCodes.OK).json(
+			sendResponse({
+				success: true,
+				message: "Product variant added successfully.",
+				data: product.variants,
+			})
+		);
+	} catch (error) {
+		next(error);
+	}
+};

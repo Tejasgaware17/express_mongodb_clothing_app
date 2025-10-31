@@ -5,6 +5,7 @@ import {
 	getProduct,
 	updateProduct,
 	deleteProduct,
+	addProductVariant,
 } from "../controllers/index.js";
 import {
 	authenticateUser,
@@ -14,6 +15,7 @@ import {
 import {
 	createProductValidator,
 	updateProductValidator,
+	addVariantValidator,
 } from "../validators/index.js";
 import reviewRouter from "./review.route.js";
 
@@ -42,5 +44,15 @@ router
 	.all(authenticateUser, authorizePermissions("admin"))
 	.patch(updateProductValidator, handleValidationErrors, updateProduct)
 	.delete(deleteProduct);
+
+// VARIANT ROUTES
+router.post(
+	"/:productId/variants",
+	authenticateUser,
+	authorizePermissions("admin"),
+	addVariantValidator,
+	handleValidationErrors,
+	addProductVariant
+);
 
 export default router;

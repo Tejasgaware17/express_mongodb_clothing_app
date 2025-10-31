@@ -4,6 +4,7 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import app from "../src/app.js";
 import { User } from "../src/models/index.js";
+import { logger } from "../src/utils/index.js";
 
 const request = supertest(app);
 
@@ -11,200 +12,220 @@ describe("Authentication Endpoints", () => {
 	let mongoServer;
 
 	beforeAll(async () => {
+		logger.silent = true;
 		mongoServer = await MongoMemoryServer.create();
 		const mongoUri = mongoServer.getUri();
 		await mongoose.connect(mongoUri);
 	});
+
 	afterAll(async () => {
 		await mongoose.disconnect();
 		await mongoServer.stop();
+		logger.silent = false;
 	});
 
 	beforeEach(async () => {
 		await User.deleteMany({});
 	});
 
-	// TESTS FOR REGISTRATION
 	describe("POST /api/v1/auth/register", () => {
-		const registrationUserData = {
-			firstName: "Testregister",
+		const newUser = {
+			firstName: "Test",
 			lastName: "User",
-			email: "registeremail@example.com",
+			email: "test@example.com",
 			password: "Password123!",
 		};
 
-		// Test for registration
 		it("should register a new user successfully with valid data", async () => {
 			const response = await request
 				.post("/api/v1/auth/register")
-				.send(registrationUserData);
+				.send(newUser);
 
 			expect(response.status).toBe(201);
 			expect(response.body.success).toBe(true);
-			expect(response.body.data.email).toBe(registrationUserData.email);
-			expect(response.body.data.name.first).toBe(
-				registrationUserData.firstName
-			);
+			expect(response.body.data.email).toBe(newUser.email);
+			expect(response.body.data).not.toHaveProperty("password");
 
-			const dbUser = await User.findOne({ email: registrationUserData.email });
+			const dbUser = await User.findOne({ email: newUser.email });
 			expect(dbUser).not.toBeNull();
-			expect(dbUser.password).not.toBe(registrationUserData.password); // Password to be hashed
+			expect(dbUser.password).not.toBe(newUser.password);
 		});
 
-		// Test for duplicate user
 		it("should fail to register a user with an existing email", async () => {
-			await request.post("/api/v1/auth/register").send(registrationUserData);
-
-			// Trying to create new user again with a different name but same details
-			const duplicateUser = { ...registrationUserData, firstName: "Jane" };
+			await request.post("/api/v1/auth/register").send(newUser);
 			const response = await request
 				.post("/api/v1/auth/register")
-				.send(duplicateUser);
+				.send(newUser);
 
 			expect(response.status).toBe(400);
 			expect(response.body.success).toBe(false);
-			expect(response.body.message).toContain("already exists");
+			expect(response.body.message).toMatch(/already exists/i);
 		});
 
-		// Test for invalid email
 		it("should fail to register a user with an invalid email", async () => {
-			const invalidEmailUserData = {
-				...registrationUserData,
-				email: "invalidemail@_com",
-				password: "Password123!",
-			};
 			const response = await request
 				.post("/api/v1/auth/register")
-				.send(invalidEmailUserData);
+				.send({ ...newUser, email: "email$gmail.com" });
 
 			expect(response.status).toBe(400);
 			expect(response.body.success).toBe(false);
-			expect(response.body.errors[0].msg).toContain(
-				"provide a valid email address"
+			expect(response.body.errors[0].msg).toMatch(
+				/provide a valid email address/i
 			);
 		});
 
-		// Test for weak password
-		it("should fail to register a user with an invalid password", async () => {
-			const weakPasswordUserData = {
-				...registrationUserData,
-				email: "weak@pass.com",
+		it("should fail to register a user with an invalid password (too short)", async () => {
+			const response = await request.post("/api/v1/auth/register").send({
+				...newUser,
 				password: "123",
-			};
-			const response = await request
-				.post("/api/v1/auth/register")
-				.send(weakPasswordUserData);
+			});
 
 			expect(response.status).toBe(400);
 			expect(response.body.success).toBe(false);
-			expect(response.body.errors[0].msg).toContain(
-				"at least 8 characters long"
+			expect(response.body.errors[0].msg).toMatch(
+				/at least 8 characters long/i
 			);
 		});
 	});
 
-	// TESTS FOR LOGIN
 	describe("POST /api/v1/auth/login", () => {
-		const testUserData = {
+		const loginUserData = {
 			firstName: "Login",
-			lastName: "Test",
+			lastName: "User",
 			email: "login@example.com",
-			password: "Password123@",
+			password: "Password123!",
 		};
 
 		beforeEach(async () => {
-			await request.post("/api/v1/auth/register").send(testUserData);
+			await request.post("/api/v1/auth/register").send(loginUserData);
 		});
 
-		// Test for login
 		it("should log in a registered user and return tokens", async () => {
 			const response = await request.post("/api/v1/auth/login").send({
-				email: testUserData.email,
-				password: testUserData.password,
+				email: "login@example.com",
+				password: "Password123!",
 			});
 
 			expect(response.status).toBe(200);
 			expect(response.body.success).toBe(true);
 			expect(response.body.data).toHaveProperty("accessToken");
-			expect(response.body.data.user.email).toBe(testUserData.email);
+			expect(response.body.data.user.email).toBe(loginUserData.email);
 
-			// Check for the secure cookie
 			const cookies = response.headers["set-cookie"];
+			expect(cookies).toBeDefined();
 			expect(cookies.some((cookie) => cookie.startsWith("refreshToken="))).toBe(
 				true
 			);
 		});
 
-		// Test for incorrect password
 		it("should fail to log in with an incorrect password", async () => {
 			const response = await request.post("/api/v1/auth/login").send({
-				email: testUserData.email,
-				password: "Wrong@123",
+				email: loginUserData.email,
+				password: "WrongPassword!",
 			});
 
 			expect(response.status).toBe(401);
+			expect(response.body.success).toBe(false);
+			expect(response.body.message).toBe("Invalid credentials.");
+		});
+
+		it("should fail to log in with a non-existent email", async () => {
+			const response = await request.post("/api/v1/auth/login").send({
+				email: "nouser@example.com",
+				password: "Password123!",
+			});
+
+			expect(response.status).toBe(401);
+			expect(response.body.success).toBe(false);
 			expect(response.body.message).toBe("Invalid credentials.");
 		});
 	});
 
-	// TESTS FOR REFRESH TOKEN
 	describe("POST /api/v1/auth/refresh-token", () => {
-		const testUserData = {
+		const refreshUserData = {
 			firstName: "Refresh",
-			lastName: "Test",
+			lastName: "User",
 			email: "refresh@example.com",
 			password: "Password123!",
 		};
+		let agent;
 
-		it("should issue a new access token if a valid refresh token is provided", async () => {
-			const agent = supertest.agent(app);
-			await agent.post("/api/v1/auth/register").send(testUserData);
-			const loginRes = await agent.post("/api/v1/auth/login").send({
-				email: testUserData.email,
-				password: testUserData.password,
+		beforeEach(async () => {
+			agent = supertest.agent(app);
+			await agent.post("/api/v1/auth/register").send(refreshUserData);
+			await agent.post("/api/v1/auth/login").send({
+				email: refreshUserData.email,
+				password: refreshUserData.password,
 			});
+		});
 
+		it("should issue a new, valid access token if a valid refresh token is provided", async () => {
 			const refreshRes = await agent.post("/api/v1/auth/refresh-token").send();
 
 			expect(refreshRes.status).toBe(200);
+			expect(refreshRes.body.success).toBe(true);
 			const { accessToken } = refreshRes.body.data;
 			expect(accessToken).toBeDefined();
 
-			// Using the new token to access a protected route
 			const profileRes = await agent
 				.get("/api/v1/users/me")
 				.set("Authorization", `Bearer ${accessToken}`);
-
 			expect(profileRes.status).toBe(200);
-			expect(profileRes.body.data.email).toBe(testUserData.email);
+			expect(profileRes.body.data.email).toBe(refreshUserData.email);
+		});
+
+		it("should fail if no refresh token cookie is provided", async () => {
+			const response = await request.post("/api/v1/auth/refresh-token").send();
+
+			expect(response.status).toBe(401);
+			expect(response.body.message).toMatch(/Authentication invalid/i);
 		});
 	});
 
-	// TESTS FOR LOGOUT
 	describe("POST /api/v1/auth/logout", () => {
-		it("should clear the refresh token cookie on logout", async () => {
-			const agent = supertest.agent(app);
-			const testUserData = {
-				firstName: "Logout",
-				lastName: "Test",
-				email: "logout@example.com",
-				password: "Password123@",
-			};
+		const logoutUserData = {
+			firstName: "Logout",
+			lastName: "User",
+			email: "logout@example.com",
+			password: "Password123!",
+		};
+		let agent;
 
-			await agent.post("/api/v1/auth/register").send(testUserData);
+		beforeEach(async () => {
+			agent = supertest.agent(app);
+			await agent.post("/api/v1/auth/register").send(logoutUserData);
 			await agent.post("/api/v1/auth/login").send({
-				email: testUserData.email,
-				password: testUserData.password,
+				email: logoutUserData.email,
+				password: logoutUserData.password,
 			});
+		});
 
+		it("should clear the refresh token cookie on logout", async () => {
 			const logoutRes = await agent.post("/api/v1/auth/logout").send();
 
 			expect(logoutRes.status).toBe(200);
+			expect(logoutRes.body.success).toBe(true);
+
 			const cookies = logoutRes.headers["set-cookie"];
+			expect(cookies).toBeDefined();
 			const refreshTokenCookie = cookies.find((cookie) =>
 				cookie.startsWith("refreshToken=")
 			);
+			expect(refreshTokenCookie).toBeDefined();
 			expect(refreshTokenCookie).toContain("Expires=Thu, 01 Jan 1970");
+		});
+
+		it("should remove the refresh token hash from the user document", async () => {
+			const userBeforeLogout = await User.findOne({
+				email: logoutUserData.email,
+			});
+			expect(userBeforeLogout.refreshTokens.length).toBeGreaterThan(0);
+
+			await agent.post("/api/v1/auth/logout").send();
+			const userAfterLogout = await User.findOne({
+				email: logoutUserData.email,
+			});
+			expect(userAfterLogout.refreshTokens).toHaveLength(0);
 		});
 	});
 });

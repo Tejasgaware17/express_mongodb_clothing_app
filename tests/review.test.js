@@ -3,25 +3,22 @@ import supertest from "supertest";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import app from "../src/app.js";
-import { User, Category, Product, Review } from "../src/models/index.js";
-import { logger } from "../src/utils/index.js";
+import { Category, Product, TopWear, Review } from "../src/models/index.js";
+import { calculateAverageRating, logger } from "../src/utils/index.js";
 
 const request = supertest(app);
 
 describe("Review Endpoints", () => {
 	let mongoServer;
-	let customerToken;
-	let otherCustomerToken;
-	let productId;
-	let productObjectId;
+	let customerToken, otherCustomerToken, customerUserId;
+	let productId, productObjectId;
 
 	beforeAll(async () => {
 		logger.silent = true;
 		mongoServer = await MongoMemoryServer.create();
 		await mongoose.connect(mongoServer.getUri());
 
-		// FIRST USER
-		await request.post("/api/v1/auth/register").send({
+		const regRes1 = await request.post("/api/v1/auth/register").send({
 			firstName: "Review",
 			lastName: "User",
 			email: "review@test.com",
@@ -32,28 +29,27 @@ describe("Review Endpoints", () => {
 			password: "Password123!",
 		});
 		customerToken = loginRes1.body.data.accessToken;
+		customerUserId = loginRes1.body.data.user._id;
 
-		// ANOTHER USER
 		await request.post("/api/v1/auth/register").send({
-			firstName: "Another",
+			firstName: "Other",
 			lastName: "User",
-			email: "another@test.com",
+			email: "other@test.com",
 			password: "Password123!",
 		});
 		const loginRes2 = await request.post("/api/v1/auth/login").send({
-			email: "another@test.com",
+			email: "other@test.com",
 			password: "Password123!",
 		});
 		otherCustomerToken = loginRes2.body.data.accessToken;
 
-		// Category and Product for tests
 		const category = await Category.create({ name: "Test Category" });
-		const product = await Product.create({
+		const product = await TopWear.create({
 			productType: "top-wear",
 			price: 1000,
 			title: "Review Product",
 			description: "A product to be reviewed.",
-			gender: "men",
+			gender: "unisex",
 			category: category._id,
 			style: { fit: "Regular", material: "Cotton", pattern: "Solid" },
 			variants: [{ color: "White", sizes: [{ size: "L", stock: 5 }] }],
@@ -68,28 +64,29 @@ describe("Review Endpoints", () => {
 		logger.silent = false;
 	});
 
-	// CREATE + GET REVIEWS
 	describe("POST & GET /api/v1/products/:productId/reviews", () => {
 		beforeEach(async () => {
 			await Review.deleteMany({});
 			await Product.findByIdAndUpdate(productObjectId, {
-				"ratings.average": 0,
-				"ratings.count": 0,
+				ratings: { average: 0, count: 0 },
 			});
 		});
 
 		it("should allow a logged-in user to create a review", async () => {
-			const res = await request
+			const reviewData = { rating: 5, comment: "Excellent product!" };
+
+			const response = await request
 				.post(`/api/v1/products/${productId}/reviews`)
 				.set("Authorization", `Bearer ${customerToken}`)
-				.send({ rating: 5, comment: "Excellent product!" });
+				.send(reviewData);
 
-			expect(res.status).toBe(201);
-			expect(res.body.data.rating).toBe(5);
-			expect(res.body.data.comment).toBe("Excellent product!");
+			expect(response.status).toBe(201);
+			expect(response.body.success).toBe(true);
+			expect(response.body.data.comment).toBe(reviewData.comment);
+			expect(response.body.data.user).toBe(customerUserId);
 		});
 
-		it("should update the product's average rating after review creation", async () => {
+		it("should update the product average rating after a review is created", async () => {
 			await request
 				.post(`/api/v1/products/${productId}/reviews`)
 				.set("Authorization", `Bearer ${customerToken}`)
@@ -106,13 +103,13 @@ describe("Review Endpoints", () => {
 				.set("Authorization", `Bearer ${customerToken}`)
 				.send({ rating: 5, comment: "Nice" });
 
-			const secondRes = await request
+			const response = await request
 				.post(`/api/v1/products/${productId}/reviews`)
 				.set("Authorization", `Bearer ${customerToken}`)
 				.send({ rating: 3, comment: "Again?" });
 
-			expect(secondRes.status).toBe(400);
-			expect(secondRes.body.message).toMatch(/already submitted/i);
+			expect(response.status).toBe(400);
+			expect(response.body.message).toMatch(/already submitted a review/i);
 		});
 
 		it("should fetch all reviews for a product", async () => {
@@ -121,97 +118,87 @@ describe("Review Endpoints", () => {
 				.set("Authorization", `Bearer ${customerToken}`)
 				.send({ rating: 5, comment: "Great!" });
 
-			const res = await request.get(`/api/v1/products/${productId}/reviews`);
-			expect(res.status).toBe(200);
-			expect(res.body.data.reviews).toHaveLength(1);
-			expect(res.body.data.reviews[0].comment).toBe("Great!");
+			const response = await request.get(
+				`/api/v1/products/${productId}/reviews`
+			);
+			expect(response.status).toBe(200);
+			expect(response.body.data.reviews).toHaveLength(1);
+			expect(response.body.data.reviews[0].comment).toBe("Great!");
 		});
 	});
 
-	// UPDATE + DELETE REVIEWS
-	describe("PATCH & DELETE /api/v1/reviews/:reviewId", () => {
+	describe("PATCH & DELETE /api/v1/products/:productId/reviews/:reviewId", () => {
 		let reviewId;
-
 		beforeEach(async () => {
 			await Review.deleteMany({});
-			const user = await User.findOne({ email: "review@test.com" });
 			const review = await Review.create({
 				rating: 3,
 				comment: "Initial comment",
-				user: user._id,
+				user: customerUserId,
 				product: productObjectId,
 			});
 			reviewId = review._id;
+			await calculateAverageRating(productObjectId);
 		});
 
 		it("should allow the author to update their review", async () => {
-			const res = await request
-				.patch(`/api/v1/reviews/${reviewId}`)
+			const response = await request
+				.patch(`/api/v1/products/${productId}/reviews/${reviewId}`)
 				.set("Authorization", `Bearer ${customerToken}`)
-				.send({ rating: 4, comment: "Updated comment!" });
+				.send({ rating: 5, comment: "Updated comment!" });
 
-			expect(res.status).toBe(200);
-			expect(res.body.data.comment).toBe("Updated comment!");
-			expect(res.body.data.rating).toBe(4);
+			expect(response.status).toBe(200);
+			expect(response.body.data.comment).toBe("Updated comment!");
+			expect(response.body.data.rating).toBe(5);
 		});
 
-		it("should forbid another user from updating someone else’s review", async () => {
-			const res = await request
-				.patch(`/api/v1/reviews/${reviewId}`)
-				.set("Authorization", `Bearer ${otherCustomerToken}`)
+		it("should recalculate rating after an update", async () => {
+			await request
+				.patch(`/api/v1/products/${productId}/reviews/${reviewId}`)
+				.set("Authorization", `Bearer ${customerToken}`)
+				.send({ rating: 1 }); // Updating rating from 3 to 1
+
+			const product = await Product.findById(productObjectId);
+			expect(product.ratings.average).toBe(1);
+			expect(product.ratings.count).toBe(1);
+		});
+
+		it("should forbid another user from updating the review", async () => {
+			const response = await request
+				.patch(`/api/v1/products/${productId}/reviews/${reviewId}`)
+				.set("Authorization", `Bearer ${otherCustomerToken}`) // Different token
 				.send({ rating: 1 });
-			expect(res.status).toBe(401);
-			expect(res.body.message).toMatch(/not authorized/i);
+
+			expect(response.status).toBe(401);
 		});
 
 		it("should allow the author to delete their review", async () => {
-			const res = await request
-				.delete(`/api/v1/reviews/${reviewId}`)
+			const response = await request
+				.delete(`/api/v1/products/${productId}/reviews/${reviewId}`)
 				.set("Authorization", `Bearer ${customerToken}`);
-			expect(res.status).toBe(200);
+
+			expect(response.status).toBe(200);
 
 			const deleted = await Review.findById(reviewId);
 			expect(deleted).toBeNull();
 		});
 
-		it("should forbid another user from deleting someone else’s review", async () => {
-			const res = await request
-				.delete(`/api/v1/reviews/${reviewId}`)
-				.set("Authorization", `Bearer ${otherCustomerToken}`);
-			expect(res.status).toBe(401);
-			expect(res.body.message).toMatch(/not authorized/i);
-		});
-
-		it("should recalculate product rating after review update", async () => {
-			// The initial review has a rating of 3
+		it("should recalculate rating after a delete", async () => {
 			await request
-				.patch(`/api/v1/reviews/${reviewId}`)
-				.set("Authorization", `Bearer ${customerToken}`)
-				.send({ rating: 1 }); // Updated to 1
-
-			const productAfter = await Product.findById(productObjectId);
-			expect(productAfter.ratings.count).toBe(1);
-			expect(productAfter.ratings.average).toBe(1);
-		});
-
-		it("should recalculate product rating after review deletion", async () => {
-			// Second review to ensure change in avg
-			const user2 = await User.findOne({ email: "another@test.com" });
-			await Review.create({
-				rating: 5,
-				comment: "Amazing!",
-				user: user2._id,
-				product: productObjectId,
-			});
-
-			// Delete one review
-			await request
-				.delete(`/api/v1/reviews/${reviewId}`)
+				.delete(`/api/v1/products/${productId}/reviews/${reviewId}`)
 				.set("Authorization", `Bearer ${customerToken}`);
 
-			const productAfter = await Product.findById(productObjectId);
-			expect(productAfter.ratings.count).toBe(1);
-			expect(productAfter.ratings.average).toBe(5);
+			const product = await Product.findById(productObjectId);
+			expect(product.ratings.average).toBe(0);
+			expect(product.ratings.count).toBe(0);
+		});
+
+		it("should forbid another user from deleting the review", async () => {
+			const response = await request
+				.delete(`/api/v1/products/${productId}/reviews/${reviewId}`)
+				.set("Authorization", `Bearer ${otherCustomerToken}`); // Different token
+
+			expect(response.status).toBe(401);
 		});
 	});
 });

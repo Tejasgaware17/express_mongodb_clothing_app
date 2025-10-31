@@ -186,17 +186,18 @@ export const deleteAddress = async (req, res, next) => {
 		if (!user) {
 			throw new NotFoundError(`No user found with id: ${userId}`);
 		}
-		if (user.addresses.length === 1) {
-			throw new BadRequestError(
-				"You cannot delete your last remaining address."
-			);
-		}
 
 		const addressIndex = user.addresses.findIndex(
 			(addr) => addr.addressId === addressId
 		);
 		if (addressIndex === -1) {
 			throw new NotFoundError(`No address found with id: ${addressId}`);
+		}
+		
+		if (user.addresses.length === 1) {
+			throw new BadRequestError(
+				"You cannot delete your last remaining address."
+			);
 		}
 
 		user.addresses.splice(addressIndex, 1);

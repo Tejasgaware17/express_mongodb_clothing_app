@@ -1,5 +1,6 @@
 import { Schema, model } from "mongoose";
 import { v4 as uuidv4 } from "uuid";
+import { generateTitle } from "../utils/index.js";
 
 // SUB-SCHEMAS
 const ImageSchema = new Schema(
@@ -24,7 +25,7 @@ const SizeSchema = new Schema(
 
 const VariantSchema = new Schema(
 	{
-		color: { type: String, required: true, trim: true },
+		color: { type: String, required: true, trim: true, lowercase: true },
 		sizes: [SizeSchema],
 	},
 	{ _id: false }
@@ -34,6 +35,18 @@ const VariantSchema = new Schema(
 const productSchemaOptions = {
 	timestamps: true,
 	discriminatorKey: "productType",
+	toJSON: {
+		virtuals: true,
+		transform: function (doc, ret) {
+			delete ret.__v;
+		},
+	},
+	toObject: {
+		virtuals: true,
+		transform: function (doc, ret) {
+			delete ret.__v;
+		},
+	},
 };
 
 const ProductSchema = new Schema(
@@ -69,55 +82,24 @@ const ProductSchema = new Schema(
 	productSchemaOptions
 );
 
+ProductSchema.virtual("sellingPrice").get(function () {
+	if (this.price && this.discount > 0) {
+		const discountedPrice = (this.price * this.discount) / 100;
+		return Math.round(this.price - discountedPrice);
+	}
+	return this.price;
+});
+
 ProductSchema.pre("validate", async function (next) {
-	if (!this.isNew) {
-		return next();
+	if (this.isNew) {
+		this.title = await generateTitle(this);
 	}
-
-	try {
-		const style = this.style || {};
-        // Product styles
-		const titleParts = [
-			style.fit,
-			style.pattern,
-		];
-
-        // Category
-		let categoryName = "";
-		if (this.category) {
-			if (this.category.name) {
-				categoryName = this.category.name;
-			} else {
-				const categoryDoc = await model("Category").findById(this.category);
-				if (categoryDoc) {
-					categoryName = categoryDoc.name;
-				}
-			}
-		}
-
-		// Combining the parts into a TITLE for product
-		const generatedTitle = titleParts
-			.filter((part) => part)
-			.join(" ")
-			.toUpperCase();
-		this.title = `${generatedTitle} ${categoryName.toUpperCase()}`.trim();
-		if (!this.title) {
-			this.title = `${this.productType
-				.toUpperCase()
-				.replace("WEAR", "")} - ${categoryName.toUpperCase()}`.trim();
-		}
-
-		next();
-	} catch (error) {
-		next(error);
-	}
+	next();
 });
 
 const Product = model("Product", ProductSchema);
 
-// DISCRIMINATORS
-
-// TOP-WEAR
+// DISCRIMINATOR TOP-WEAR
 const TopWear = Product.discriminator(
 	"top-wear",
 	new Schema({
@@ -132,7 +114,7 @@ const TopWear = Product.discriminator(
 	})
 );
 
-// BOTTOM-WEAR
+// DISCRIMINATOR BOTTOM-WEAR
 const BottomWear = Product.discriminator(
 	"bottom-wear",
 	new Schema({

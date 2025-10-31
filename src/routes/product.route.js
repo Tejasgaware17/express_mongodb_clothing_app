@@ -7,7 +7,8 @@ import {
 	deleteProduct,
 	addProductVariant,
 	addProductVariantSize,
-	updateStock
+	updateStock,
+	deleteProductVariantSize,
 } from "../controllers/index.js";
 import {
 	authenticateUser,
@@ -19,7 +20,7 @@ import {
 	updateProductValidator,
 	addVariantValidator,
 	addSizeValidator,
-	updateStockValidator
+	updateStockValidator,
 } from "../validators/index.js";
 import reviewRouter from "./review.route.js";
 
@@ -68,13 +69,10 @@ router.post(
 	addProductVariantSize
 );
 
-router.patch(
-	"/:productId/variants/:color/sizes/:size",
-	authenticateUser,
-	authorizePermissions("admin"),
-	updateStockValidator,
-	handleValidationErrors,
-	updateStock
-);
+router
+	.route("/:productId/variants/:color/sizes/:size")
+	.all(authenticateUser, authorizePermissions("admin"))
+	.patch(updateStockValidator, handleValidationErrors, updateStock)
+	.delete(deleteProductVariantSize);
 
 export default router;

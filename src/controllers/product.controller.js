@@ -440,3 +440,48 @@ export const updateStock = async (req, res, next) => {
 		next(error);
 	}
 };
+
+export const deleteProductVariantSize = async (req, res, next) => {
+	try {
+		const { productId, color, size } = req.params;
+		const normalizedColor = color.toLowerCase();
+
+		const product = await Product.findOne({ productId });
+		if (!product) {
+			throw new NotFoundError(`No product found with id: ${productId}`);
+		}
+
+		const variant = product.variants.find((v) => v.color === normalizedColor);
+		if (!variant) {
+			throw new NotFoundError(`No variant found with color: ${color}`);
+		}
+
+		if (variant.sizes.length === 1) {
+			throw new BadRequestError(
+				`Cannot delete the last size. A variant must have at least one size.`
+			);
+		}
+
+		const sizeIndex = variant.sizes.findIndex(
+			(s) => String(s.size).toLowerCase() === String(size).toLowerCase()
+		);
+		if (sizeIndex === -1) {
+			throw new NotFoundError(
+				`No size '${size}' found for the ${color} variant.`
+			);
+		}
+
+		variant.sizes.splice(sizeIndex, 1);
+		await product.save();
+
+		return res.status(StatusCodes.OK).json(
+			sendResponse({
+				success: true,
+				message: "Size removed from variant successfully.",
+				data: product.variants,
+			})
+		);
+	} catch (error) {
+		next(error);
+	}
+};

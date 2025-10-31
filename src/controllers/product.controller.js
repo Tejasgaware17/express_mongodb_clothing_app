@@ -485,3 +485,42 @@ export const deleteProductVariantSize = async (req, res, next) => {
 		next(error);
 	}
 };
+
+export const deleteProductVariant = async (req, res, next) => {
+	try {
+		const { productId, color } = req.params;
+		const normalizedColor = color.toLowerCase();
+
+		const product = await Product.findOne({ productId });
+		if (!product) {
+			throw new NotFoundError(`No product found with id: ${productId}`);
+		}
+
+		const variant = product.variants.find((v) => v.color === normalizedColor);
+		if (!variant) {
+			throw new NotFoundError(`No variant found with color: ${color}`);
+		}
+
+		if (product.variants.length === 1) {
+			throw new BadRequestError(
+				"Cannot delete the last variant. A product must have at least one variant."
+			);
+		}
+
+		const updatedProduct = await Product.findOneAndUpdate(
+			{ productId },
+			{ $pull: { variants: { color: normalizedColor } } },
+			{ new: true }
+		);
+
+		return res.status(StatusCodes.OK).json(
+			sendResponse({
+				success: true,
+				message: "Variant deleted successfully.",
+				data: updatedProduct.variants,
+			})
+		);
+	} catch (error) {
+		next(error);
+	}
+};

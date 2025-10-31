@@ -9,6 +9,7 @@ import {
 	addProductVariantSize,
 	updateStock,
 	deleteProductVariantSize,
+	deleteProductVariant,
 } from "../controllers/index.js";
 import {
 	authenticateUser,
@@ -74,5 +75,12 @@ router
 	.all(authenticateUser, authorizePermissions("admin"))
 	.patch(updateStockValidator, handleValidationErrors, updateStock)
 	.delete(deleteProductVariantSize);
+
+router.delete(
+	"/:productId/variants/:color",
+	authenticateUser,
+	authorizePermissions("admin"),
+	deleteProductVariant
+);
 
 export default router;

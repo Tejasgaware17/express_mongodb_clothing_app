@@ -17,3 +17,12 @@ export const addVariantValidator = [
 		.isNumeric({ no_symbols: true })
 		.withMessage("Stock must be a positive number."),
 ];
+
+export const addSizeValidator = [
+	body("size").notEmpty().withMessage("Size is required."),
+	body("stock")
+		.notEmpty()
+		.withMessage("Stock is required.")
+		.isNumeric({ no_symbols: true })
+		.withMessage("Stock must be a positive number."),
+];

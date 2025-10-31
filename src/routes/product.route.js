@@ -6,6 +6,7 @@ import {
 	updateProduct,
 	deleteProduct,
 	addProductVariant,
+	addProductVariantSize,
 } from "../controllers/index.js";
 import {
 	authenticateUser,
@@ -16,6 +17,7 @@ import {
 	createProductValidator,
 	updateProductValidator,
 	addVariantValidator,
+	addSizeValidator,
 } from "../validators/index.js";
 import reviewRouter from "./review.route.js";
 
@@ -53,6 +55,15 @@ router.post(
 	addVariantValidator,
 	handleValidationErrors,
 	addProductVariant
+);
+
+router.post(
+	"/:productId/variants/:color/sizes",
+	authenticateUser,
+	authorizePermissions("admin"),
+	addSizeValidator,
+	handleValidationErrors,
+	addProductVariantSize
 );
 
 export default router;

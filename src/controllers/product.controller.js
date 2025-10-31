@@ -360,3 +360,43 @@ export const addProductVariant = async (req, res, next) => {
 		next(error);
 	}
 };
+
+export const addProductVariantSize = async (req, res, next) => {
+	try {
+		const { productId, color } = req.params;
+		const { size, stock } = req.body;
+		const normalizedColor = color.toLowerCase();
+
+		const product = await Product.findOne({ productId });
+		if (!product) {
+			throw new NotFoundError(`No product found with id: ${productId}`);
+		}
+
+		const variant = product.variants.find((v) => v.color === normalizedColor);
+		if (!variant) {
+			throw new NotFoundError(`No variant found with color: ${color}`);
+		}
+
+		const sizeExists = variant.sizes.some(
+			(s) => String(s.size).toLowerCase() === String(size).toLowerCase()
+		);
+		if (sizeExists) {
+			throw new BadRequestError(
+				`Size '${size}' already exists for the ${color} variant.`
+			);
+		}
+
+		variant.sizes.push({ size, stock });
+		await product.save();
+
+		return res.status(StatusCodes.OK).json(
+			sendResponse({
+				success: true,
+				message: "Size added to variant successfully.",
+				data: product.variants,
+			})
+		);
+	} catch (error) {
+		next(error);
+	}
+};

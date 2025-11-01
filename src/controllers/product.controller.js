@@ -456,18 +456,18 @@ export const deleteProductVariantSize = async (req, res, next) => {
 			throw new NotFoundError(`No variant found with color: ${color}`);
 		}
 
-		if (variant.sizes.length === 1) {
-			throw new BadRequestError(
-				`Cannot delete the last size. A variant must have at least one size.`
-			);
-		}
-
 		const sizeIndex = variant.sizes.findIndex(
 			(s) => String(s.size).toLowerCase() === String(size).toLowerCase()
 		);
 		if (sizeIndex === -1) {
 			throw new NotFoundError(
 				`No size '${size}' found for the ${color} variant.`
+			);
+		}
+
+		if (variant.sizes.length === 1) {
+			throw new BadRequestError(
+				`Cannot delete the last size. A variant must have at least one size.`
 			);
 		}
 

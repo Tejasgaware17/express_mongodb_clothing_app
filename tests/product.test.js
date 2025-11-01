@@ -497,8 +497,71 @@ describe("Product Endpoints", () => {
 					.send({ sizes: [{ size: "S", stock: 5 }] });
 
 				expect(response.status).toBe(400);
-				expect(response.body.message).toBe('Validation failed.')
+				expect(response.body.message).toBe("Validation failed.");
 				expect(response.body.errors[0].path).toBe("color");
+			});
+		});
+
+		describe("POST /api/v1/products/:productId/variants/:color/sizes", () => {
+			const newSizeData = {
+				size: "XL",
+				stock: 10,
+			};
+
+			it("should allow an admin to add a new size to a variant", async () => {
+				const response = await request
+					.post(`/api/v1/products/${sampleProductId}/variants/black/sizes`)
+					.set("Authorization", `Bearer ${adminToken}`)
+					.send(newSizeData);
+
+				expect(response.status).toBe(200);
+				expect(response.body.success).toBe(true);
+
+				const product = await Product.findById(sampleProductObjectId);
+				const variant = product.variants.find((v) => v.color === "black");
+				expect(variant.sizes).toHaveLength(2);
+				expect(variant.sizes.some((s) => s.size === "XL")).toBe(true);
+			});
+
+			it("should prevent adding a size that already exists", async () => {
+				const response = await request
+					.post(`/api/v1/products/${sampleProductId}/variants/black/sizes`)
+					.set("Authorization", `Bearer ${adminToken}`)
+					.send({ size: "M", stock: 10 });
+
+				expect(response.status).toBe(400);
+				expect(response.body.message).toMatch(/size 'm' already exists/i);
+			});
+
+			it("should return 404 if the color does not exist", async () => {
+				const response = await request
+					.post(
+						`/api/v1/products/${sampleProductId}/variants/nonexistentcolor/sizes`
+					)
+					.set("Authorization", `Bearer ${adminToken}`)
+					.send(newSizeData);
+
+				expect(response.status).toBe(404);
+			});
+
+			it("should forbid a non-admin user from adding a size", async () => {
+				const response = await request
+					.post(`/api/v1/products/${sampleProductId}/variants/black/sizes`)
+					.set("Authorization", `Bearer ${customerToken}`)
+					.send(newSizeData);
+
+				expect(response.status).toBe(403);
+			});
+
+			it("should fail validation if data is missing", async () => {
+				const response = await request
+					.post(`/api/v1/products/${sampleProductId}/variants/black/sizes`)
+					.set("Authorization", `Bearer ${adminToken}`)
+					.send({ size: "XL" });
+
+				expect(response.status).toBe(400);
+				expect(response.body.message).toBe("Validation failed.");
+				expect(response.body.errors[0].path).toBe("stock");
 			});
 		});
 	});

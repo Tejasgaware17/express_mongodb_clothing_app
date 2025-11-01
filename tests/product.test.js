@@ -432,4 +432,74 @@ describe("Product Endpoints", () => {
 			expect(dbCategory).not.toBeNull();
 		});
 	});
+
+	describe("Variant Management Endpoints", () => {
+		describe("POST /api/v1/products/:productId/variants", () => {
+			const newVariantData = {
+				color: "Red",
+				sizes: [
+					{ size: "M", stock: 20 },
+					{ size: "L", stock: 15 },
+				],
+			};
+
+			it("should allow an admin to add a new variant (color)", async () => {
+				const response = await request
+					.post(`/api/v1/products/${sampleProductId}/variants`)
+					.set("Authorization", `Bearer ${adminToken}`)
+					.send(newVariantData);
+
+				expect(response.status).toBe(200);
+				expect(response.body.success).toBe(true);
+				expect(response.body.data).toHaveLength(2);
+				expect(response.body.data[1].color).toBe("red");
+
+				const product = await Product.findById(sampleProductObjectId);
+				expect(product.variants).toHaveLength(2);
+				expect(product.variants[1].color).toBe("red");
+			});
+
+			it("should forbid a non-admin user from adding a variant", async () => {
+				const response = await request
+					.post(`/api/v1/products/${sampleProductId}/variants`)
+					.set("Authorization", `Bearer ${customerToken}`)
+					.send(newVariantData);
+
+				expect(response.status).toBe(403);
+			});
+
+			it("should prevent adding a variant with a color that already exists", async () => {
+				const response = await request
+					.post(`/api/v1/products/${sampleProductId}/variants`)
+					.set("Authorization", `Bearer ${adminToken}`)
+					.send({ color: "black", sizes: [{ size: "S", stock: 5 }] });
+
+				expect(response.status).toBe(400);
+				expect(response.body.message).toMatch(
+					/variant with the color 'black' already exists/i
+				);
+			});
+
+			it("should fail validation if sizes array is empty", async () => {
+				const response = await request
+					.post(`/api/v1/products/${sampleProductId}/variants`)
+					.set("Authorization", `Bearer ${adminToken}`)
+					.send({ color: "Green", sizes: [] });
+
+				expect(response.status).toBe(400);
+				expect(response.body.errors[0].path).toBe("sizes");
+			});
+
+			it("should fail validation if data is missing", async () => {
+				const response = await request
+					.post(`/api/v1/products/${sampleProductId}/variants`)
+					.set("Authorization", `Bearer ${adminToken}`)
+					.send({ sizes: [{ size: "S", stock: 5 }] });
+
+				expect(response.status).toBe(400);
+				expect(response.body.message).toBe('Validation failed.')
+				expect(response.body.errors[0].path).toBe("color");
+			});
+		});
+	});
 });

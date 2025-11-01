@@ -1,4 +1,12 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
+import {
+	describe,
+	it,
+	expect,
+	beforeAll,
+	afterAll,
+	beforeEach,
+	should,
+} from "vitest";
 import supertest from "supertest";
 import mongoose from "mongoose";
 import { MongoMemoryServer } from "mongodb-memory-server";
@@ -562,6 +570,55 @@ describe("Product Endpoints", () => {
 				expect(response.status).toBe(400);
 				expect(response.body.message).toBe("Validation failed.");
 				expect(response.body.errors[0].path).toBe("stock");
+			});
+		});
+
+		describe("PATCH /api/v1/products/:productId/variants/:color/sizes/:size", () => {
+			const updateStockData = {
+				stock: 99,
+			};
+
+			it("should allow an admin to update the stock for a specific size", async () => {
+				const response = await request
+					.patch(`/api/v1/products/${sampleProductId}/variants/black/sizes/M`)
+					.set("Authorization", `Bearer ${adminToken}`)
+					.send(updateStockData);
+
+				expect(response.status).toBe(200);
+				expect(response.body.success).toBe(true);
+
+				const product = await Product.findById(sampleProductObjectId);
+				const variant = product.variants.find((v) => v.color === "black");
+				const size = variant.sizes.find((s) => s.size === "M");
+				expect(size.stock).toBe(99);
+			});
+
+			it("should fail validation if stock is not a number", async () => {
+				const response = await request
+					.patch(`/api/v1/products/${sampleProductId}/variants/black/sizes/M`)
+					.set("Authorization", `Bearer ${adminToken}`)
+					.send({ stock: "invalid" });
+
+				expect(response.status).toBe(400);
+				expect(response.body.errors[0].path).toBe("stock");
+			});
+
+			it("should return 404 if the size does not exist", async () => {
+				const response = await request
+					.patch(`/api/v1/products/${sampleProductId}/variants/black/sizes/XL`)
+					.set("Authorization", `Bearer ${adminToken}`)
+					.send(updateStockData);
+
+				expect(response.status).toBe(404);
+			});
+
+			it("should forbid a non-admin user from updating stock", async () => {
+				const response = await request
+					.patch(`/api/v1/products/${sampleProductId}/variants/black/sizes/M`)
+					.set("Authorization", `Bearer ${customerToken}`)
+					.send(updateStockData);
+
+				expect(response.status).toBe(403);
 			});
 		});
 	});

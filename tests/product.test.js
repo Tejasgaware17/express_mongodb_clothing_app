@@ -667,5 +667,52 @@ describe("Product Endpoints", () => {
 				expect(response.status).toBe(403);
 			});
 		});
+
+		describe("DELETE /api/v1/products/:productId/variants/:color", () => {
+			it("should allow an admin to delete a color variant", async () => {
+				await request
+					.post(`/api/v1/products/${sampleProductId}/variants`)
+					.set("Authorization", `Bearer ${adminToken}`)
+					.send({ color: "red", sizes: [{ size: "M", stock: 10 }] });
+
+				const response = await request
+					.delete(`/api/v1/products/${sampleProductId}/variants/black`)
+					.set("Authorization", `Bearer ${adminToken}`);
+
+				expect(response.status).toBe(200);
+				expect(response.body.success).toBe(true);
+
+				const product = await Product.findById(sampleProductObjectId);
+				expect(product.variants).toHaveLength(1);
+				expect(product.variants[0].color).toBe("red");
+			});
+
+			it("should forbid deleting the last variant of a product", async () => {
+				const response = await request
+					.delete(`/api/v1/products/${sampleProductId}/variants/black`)
+					.set("Authorization", `Bearer ${adminToken}`);
+
+				expect(response.status).toBe(400);
+				expect(response.body.message).toMatch(
+					/Cannot delete the last variant/i
+				);
+			});
+
+			it("should return 404 if the color does not exist", async () => {
+				const response = await request
+					.delete(`/api/v1/products/${sampleProductId}/variants/green`)
+					.set("Authorization", `Bearer ${adminToken}`);
+
+				expect(response.status).toBe(404);
+			});
+
+			it("should forbid a non-admin user from deleting a variant", async () => {
+				const response = await request
+					.delete(`/api/v1/products/${sampleProductId}/variants/black`)
+					.set("Authorization", `Bearer ${customerToken}`);
+
+				expect(response.status).toBe(403);
+			});
+		});
 	});
 });

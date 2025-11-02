@@ -3,3 +3,4 @@ export * from "./user.validator.js";
 export * from "./category.validator.js";
 export * from "./product.validator.js";
 export * from "./review.validator.js";
+export * from "./variant.validator.js";

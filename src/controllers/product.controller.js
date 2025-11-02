@@ -324,3 +324,203 @@ export const deleteProduct = async (req, res, next) => {
 		next(error);
 	}
 };
+
+// VARIANT CONTROLLERS
+export const addProductVariant = async (req, res, next) => {
+	try {
+		const { productId } = req.params;
+		const { color, sizes } = req.body;
+
+		const product = await Product.findOne({ productId });
+		if (!product) {
+			throw new NotFoundError(`No product found with id: ${productId}`);
+		}
+
+		const colorExists = product.variants.some(
+			(variant) => variant.color.toLowerCase() === color.toLowerCase()
+		);
+		if (colorExists) {
+			throw new BadRequestError(
+				`A variant with the color '${color}' already exists for this product.`
+			);
+		}
+
+		const newVariant = { color, sizes };
+		product.variants.push(newVariant);
+		await product.save();
+
+		return res.status(StatusCodes.OK).json(
+			sendResponse({
+				success: true,
+				message: "Product variant added successfully.",
+				data: product.variants,
+			})
+		);
+	} catch (error) {
+		next(error);
+	}
+};
+
+export const addProductVariantSize = async (req, res, next) => {
+	try {
+		const { productId, color } = req.params;
+		const { size, stock } = req.body;
+		const normalizedColor = color.toLowerCase();
+
+		const product = await Product.findOne({ productId });
+		if (!product) {
+			throw new NotFoundError(`No product found with id: ${productId}`);
+		}
+
+		const variant = product.variants.find((v) => v.color === normalizedColor);
+		if (!variant) {
+			throw new NotFoundError(`No variant found with color: ${color}`);
+		}
+
+		const sizeExists = variant.sizes.some(
+			(s) => String(s.size).toLowerCase() === String(size).toLowerCase()
+		);
+		if (sizeExists) {
+			throw new BadRequestError(
+				`Size '${size}' already exists for the ${color} variant.`
+			);
+		}
+
+		variant.sizes.push({ size, stock });
+		await product.save();
+
+		return res.status(StatusCodes.OK).json(
+			sendResponse({
+				success: true,
+				message: "Size added to variant successfully.",
+				data: product.variants,
+			})
+		);
+	} catch (error) {
+		next(error);
+	}
+};
+
+export const updateStock = async (req, res, next) => {
+	try {
+		const { productId, color, size } = req.params;
+		const { stock } = req.body;
+		const normalizedColor = color.toLowerCase();
+
+		const product = await Product.findOne({ productId });
+		if (!product) {
+			throw new NotFoundError(`No product found with id: ${productId}`);
+		}
+
+		const variant = product.variants.find((v) => v.color === normalizedColor);
+		if (!variant) {
+			throw new NotFoundError(`No variant found with color: ${color}`);
+		}
+
+		const sizeToUpdate = variant.sizes.find(
+			(s) => String(s.size).toLowerCase() === String(size).toLowerCase()
+		);
+		if (!sizeToUpdate) {
+			throw new NotFoundError(
+				`No size '${size}' found for the ${color} variant.`
+			);
+		}
+
+		sizeToUpdate.stock = stock;
+		await product.save();
+
+		return res.status(StatusCodes.OK).json(
+			sendResponse({
+				success: true,
+				message: "Stock updated successfully.",
+				data: product.variants,
+			})
+		);
+	} catch (error) {
+		next(error);
+	}
+};
+
+export const deleteProductVariantSize = async (req, res, next) => {
+	try {
+		const { productId, color, size } = req.params;
+		const normalizedColor = color.toLowerCase();
+
+		const product = await Product.findOne({ productId });
+		if (!product) {
+			throw new NotFoundError(`No product found with id: ${productId}`);
+		}
+
+		const variant = product.variants.find((v) => v.color === normalizedColor);
+		if (!variant) {
+			throw new NotFoundError(`No variant found with color: ${color}`);
+		}
+
+		const sizeIndex = variant.sizes.findIndex(
+			(s) => String(s.size).toLowerCase() === String(size).toLowerCase()
+		);
+		if (sizeIndex === -1) {
+			throw new NotFoundError(
+				`No size '${size}' found for the ${color} variant.`
+			);
+		}
+
+		if (variant.sizes.length === 1) {
+			throw new BadRequestError(
+				`Cannot delete the last size. A variant must have at least one size.`
+			);
+		}
+
+		variant.sizes.splice(sizeIndex, 1);
+		await product.save();
+
+		return res.status(StatusCodes.OK).json(
+			sendResponse({
+				success: true,
+				message: "Size removed from variant successfully.",
+				data: product.variants,
+			})
+		);
+	} catch (error) {
+		next(error);
+	}
+};
+
+export const deleteProductVariant = async (req, res, next) => {
+	try {
+		const { productId, color } = req.params;
+		const normalizedColor = color.toLowerCase();
+
+		const product = await Product.findOne({ productId });
+		if (!product) {
+			throw new NotFoundError(`No product found with id: ${productId}`);
+		}
+
+		const variant = product.variants.find((v) => v.color === normalizedColor);
+		if (!variant) {
+			throw new NotFoundError(`No variant found with color: ${color}`);
+		}
+
+		if (product.variants.length === 1) {
+			throw new BadRequestError(
+				"Cannot delete the last variant. A product must have at least one variant."
+			);
+		}
+
+		const updatedProduct = await Product.findOneAndUpdate(
+			{ productId },
+			{ $pull: { variants: { color: normalizedColor } } },
+			{ new: true }
+		);
+
+		return res.status(StatusCodes.OK).json(
+			sendResponse({
+				success: true,
+				message: "Variant deleted successfully.",
+				data: updatedProduct.variants,
+			})
+		);
+	} catch (error) {
+		next(error);
+	}
+};

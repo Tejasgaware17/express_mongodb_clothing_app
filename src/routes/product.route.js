@@ -5,6 +5,11 @@ import {
 	getProduct,
 	updateProduct,
 	deleteProduct,
+	addProductVariant,
+	addProductVariantSize,
+	updateStock,
+	deleteProductVariantSize,
+	deleteProductVariant,
 } from "../controllers/index.js";
 import {
 	authenticateUser,
@@ -14,6 +19,9 @@ import {
 import {
 	createProductValidator,
 	updateProductValidator,
+	addVariantValidator,
+	addSizeValidator,
+	updateStockValidator,
 } from "../validators/index.js";
 import reviewRouter from "./review.route.js";
 
@@ -42,5 +50,37 @@ router
 	.all(authenticateUser, authorizePermissions("admin"))
 	.patch(updateProductValidator, handleValidationErrors, updateProduct)
 	.delete(deleteProduct);
+
+// VARIANT ROUTES
+router.post(
+	"/:productId/variants",
+	authenticateUser,
+	authorizePermissions("admin"),
+	addVariantValidator,
+	handleValidationErrors,
+	addProductVariant
+);
+
+router.post(
+	"/:productId/variants/:color/sizes",
+	authenticateUser,
+	authorizePermissions("admin"),
+	addSizeValidator,
+	handleValidationErrors,
+	addProductVariantSize
+);
+
+router
+	.route("/:productId/variants/:color/sizes/:size")
+	.all(authenticateUser, authorizePermissions("admin"))
+	.patch(updateStockValidator, handleValidationErrors, updateStock)
+	.delete(deleteProductVariantSize);
+
+router.delete(
+	"/:productId/variants/:color",
+	authenticateUser,
+	authorizePermissions("admin"),
+	deleteProductVariant
+);
 
 export default router;
